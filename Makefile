@@ -5,8 +5,8 @@ JSI_DIR=./jsi
 DUKTAPE_DIR=./duktape-2.7.0
 BUILDS=./builds
 
-$(BUILDS)/main: test.cpp $(BUILDS)/jsi.o $(BUILDS)/duktape.o $(BUILDS)/duktape-jsi.o
-	$(CPP) $(CFLAGS) -o $(BUILDS)/main test.cpp $(BUILDS)/jsi.o $(BUILDS)/duktape.o $(BUILDS)/duktape-jsi.o -I.
+$(BUILDS)/main: main.cpp $(BUILDS)/jsi.o $(BUILDS)/duktape.o $(BUILDS)/duktape-jsi.o
+	$(CPP) $(CFLAGS) -o $(BUILDS)/main main.cpp $(BUILDS)/jsi.o $(BUILDS)/duktape.o $(BUILDS)/duktape-jsi.o -I.
 
 $(BUILDS)/duktape-jsi.o: duktape-jsi.h duktape-jsi.cpp
 	$(CPP) $(CFLAGS) -o $(BUILDS)/duktape-jsi.o -c duktape-jsi.cpp -I.
