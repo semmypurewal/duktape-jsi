@@ -9,202 +9,219 @@ class DuktapeRuntime : public Runtime {
 public:
   DuktapeRuntime();
 
-  Value topOfDukStackToValue() {
-    if (duk_is_number(ctx, -1)) {
-      return Value(duk_get_number(ctx, -1));
-    } else if (duk_is_boolean(ctx, -1)) {
-      return Value((bool)duk_get_boolean(ctx, -1));
-    } else if (duk_is_symbol(ctx, -1)) {
-      throw std::logic_error("JS Value type Symbol not implemented");
-    } else if (duk_is_string(ctx, -1)) {
-      return Value(String::createFromUtf8(
-          *this, (const uint8_t *)duk_get_string(ctx, -1),
-          strlen(duk_get_string(ctx, -1))));
-    } else if (duk_is_null(ctx, -1)) {
-      return Value(nullptr);
-    } else if (duk_is_object(ctx, -1)) {
-      throw std::logic_error("JS Value type Object not implemented");
-    }
-    return Value();
-  }
-
-  Value evaluateJavaScript(const std::shared_ptr<const Buffer> &buffer,
-                           const std::string &sourceUrl) {
-    std::cout << "inside evaluate JavaScript" << std::endl;
-    duk_eval_string(ctx, reinterpret_cast<const char *>(buffer->data()));
-    return Value(topOfDukStackToValue());
-  }
+  Value evaluateJavaScript(const std::shared_ptr<const Buffer> &,
+                           const std::string &) override;
 
   std::shared_ptr<const PreparedJavaScript>
   prepareJavaScript(const std::shared_ptr<const Buffer> &buffer,
-                    std::string sourceURL) {
+                    std::string sourceURL) override {
     throw std::logic_error("unimplemented method");
   }
 
   Value evaluatePreparedJavaScript(
-      const std::shared_ptr<const PreparedJavaScript> &js) {
+      const std::shared_ptr<const PreparedJavaScript> &js) override {
     throw std::logic_error("unimplemented method");
   }
 
-  bool drainMicrotasks(int maxMicrotasksHint) {
+  bool drainMicrotasks(int maxMicrotasksHint) override {
     throw std::logic_error("unimplemented method");
   }
 
-  Object global() { throw std::logic_error("unimplemented method"); }
+  Object global() override { throw std::logic_error("unimplemented method"); }
 
-  std::string description() { throw std::logic_error("unimplemented method"); }
-
-  bool isInspectable() { throw std::logic_error("unimplemented method"); }
-
-  Instrumentation &instrumentation() {
+  std::string description() override {
     throw std::logic_error("unimplemented method");
   }
 
-  PointerValue *cloneSymbol(const Runtime::PointerValue *pv) {
-    throw std::logic_error("unimplemented method");
-  }
-  PointerValue *cloneString(const Runtime::PointerValue *pv) {
-    throw std::logic_error("unimplemented method");
-  }
-  PointerValue *cloneObject(const Runtime::PointerValue *pv) {
-    throw std::logic_error("unimplemented method");
-  }
-  PointerValue *clonePropNameID(const Runtime::PointerValue *pv) {
+  bool isInspectable() override {
     throw std::logic_error("unimplemented method");
   }
 
-  PropNameID createPropNameIDFromAscii(const char *str, size_t length) {
-    throw std::logic_error("unimplemented method");
-  }
-  PropNameID createPropNameIDFromUtf8(const uint8_t *utf8, size_t length) {
-    throw std::logic_error("unimplemented method");
-  }
-  PropNameID createPropNameIDFromString(const String &str) {
-    throw std::logic_error("unimplemented method");
-  }
-  PropNameID createPropNameIDFromSymbol(const Symbol &sym) {
-    throw std::logic_error("unimplemented method");
-  }
-  std::string utf8(const PropNameID &) {
-    throw std::logic_error("unimplemented method");
-  }
-  bool compare(const PropNameID &, const PropNameID &) {
+  Instrumentation &instrumentation() override {
     throw std::logic_error("unimplemented method");
   }
 
-  std::string symbolToString(const Symbol &) {
+  PointerValue *cloneSymbol(const Runtime::PointerValue *pv) override {
+    throw std::logic_error("unimplemented method");
+  }
+  PointerValue *cloneString(const Runtime::PointerValue *pv) override {
+    throw std::logic_error("unimplemented method");
+  }
+  PointerValue *cloneObject(const Runtime::PointerValue *pv) override {
+    throw std::logic_error("unimplemented method");
+  }
+  PointerValue *clonePropNameID(const Runtime::PointerValue *pv) override {
     throw std::logic_error("unimplemented method");
   }
 
-  String createStringFromAscii(const char *str, size_t length) {
+  PropNameID createPropNameIDFromAscii(const char *str,
+                                       size_t length) override {
     throw std::logic_error("unimplemented method");
   }
-  String createStringFromUtf8(const uint8_t *utf8, size_t length) {
+  PropNameID createPropNameIDFromUtf8(const uint8_t *utf8,
+                                      size_t length) override {
     throw std::logic_error("unimplemented method");
   }
-  std::string utf8(const String &) {
+  PropNameID createPropNameIDFromString(const String &str) override {
     throw std::logic_error("unimplemented method");
   }
-
-  Object createObject() { throw std::logic_error("unimplemented method"); }
-  Object createObject(std::shared_ptr<HostObject> ho) {
+  PropNameID createPropNameIDFromSymbol(const Symbol &sym) override {
     throw std::logic_error("unimplemented method");
   }
-  std::shared_ptr<HostObject> getHostObject(const jsi::Object &) {
+  std::string utf8(const PropNameID &) override {
     throw std::logic_error("unimplemented method");
   }
-  HostFunctionType &getHostFunction(const jsi::Function &) {
-    throw std::logic_error("unimplemented method");
-  }
-
-  Value getProperty(const Object &, const PropNameID &name) {
-    throw std::logic_error("unimplemented method");
-  }
-  Value getProperty(const Object &, const String &name) {
-    throw std::logic_error("unimplemented method");
-  }
-  bool hasProperty(const Object &, const PropNameID &name) {
-    throw std::logic_error("unimplemented method");
-  }
-  bool hasProperty(const Object &, const String &name) {
-    throw std::logic_error("unimplemented method");
-  }
-  void setPropertyValue(Object &, const PropNameID &name, const Value &value) {
-    throw std::logic_error("unimplemented method");
-  }
-  void setPropertyValue(Object &, const String &name, const Value &value) {
+  bool compare(const PropNameID &, const PropNameID &) override {
     throw std::logic_error("unimplemented method");
   }
 
-  bool isArray(const Object &) const {
-    throw std::logic_error("unimplemented method");
-  }
-  bool isArrayBuffer(const Object &) const {
-    throw std::logic_error("unimplemented method");
-  }
-  bool isFunction(const Object &) const {
-    throw std::logic_error("unimplemented method");
-  }
-  bool isHostObject(const jsi::Object &) const {
-    throw std::logic_error("unimplemented method");
-  }
-  bool isHostFunction(const jsi::Function &) const {
-    throw std::logic_error("unimplemented method");
-  }
-  Array getPropertyNames(const Object &) {
+  std::string symbolToString(const Symbol &) override {
     throw std::logic_error("unimplemented method");
   }
 
-  WeakObject createWeakObject(const Object &) {
-    throw std::logic_error("unimplemented method");
-  }
-  Value lockWeakObject(WeakObject &) {
+  String createStringFromAscii(const char *str, size_t length) override {
     throw std::logic_error("unimplemented method");
   }
 
-  Array createArray(size_t length) {
+  String createStringFromUtf8(const uint8_t *utf8, size_t length) override {
     throw std::logic_error("unimplemented method");
   }
-  size_t size(const Array &) { throw std::logic_error("unimplemented method"); }
-  size_t size(const ArrayBuffer &) {
+
+  std::string utf8(const String &) override {
     throw std::logic_error("unimplemented method");
   }
-  uint8_t *data(const ArrayBuffer &) {
+
+  Object createObject() override {
     throw std::logic_error("unimplemented method");
   }
-  Value getValueAtIndex(const Array &, size_t i) {
+
+  Object createObject(std::shared_ptr<HostObject> ho) override {
     throw std::logic_error("unimplemented method");
   }
-  void setValueAtIndexImpl(Array &, size_t i, const Value &value) {
+
+  std::shared_ptr<HostObject> getHostObject(const jsi::Object &) override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  HostFunctionType &getHostFunction(const jsi::Function &) override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  Value getProperty(const Object &, const PropNameID &name) override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  Value getProperty(const Object &, const String &name) override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  bool hasProperty(const Object &, const PropNameID &name) override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  bool hasProperty(const Object &, const String &name) override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  void setPropertyValue(Object &, const PropNameID &name,
+                        const Value &value) override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  void setPropertyValue(Object &, const String &name,
+                        const Value &value) override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  bool isArray(const Object &) const override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  bool isArrayBuffer(const Object &) const override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  bool isFunction(const Object &) const override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  bool isHostObject(const jsi::Object &) const override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  bool isHostFunction(const jsi::Function &) const override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  Array getPropertyNames(const Object &) override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  WeakObject createWeakObject(const Object &) override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  Value lockWeakObject(WeakObject &) override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  Array createArray(size_t length) override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  size_t size(const Array &) override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  size_t size(const ArrayBuffer &) override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  uint8_t *data(const ArrayBuffer &) override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  Value getValueAtIndex(const Array &, size_t i) override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  void setValueAtIndexImpl(Array &, size_t i, const Value &value) override {
     throw std::logic_error("unimplemented method");
   }
 
   Function createFunctionFromHostFunction(const PropNameID &name,
                                           unsigned int paramCount,
-                                          HostFunctionType func) {
-    throw std::logic_error("unimplemented method");
-  }
-  Value call(const Function &, const Value &jsThis, const Value *args,
-             size_t count) {
-    throw std::logic_error("unimplemented method");
-  }
-  Value callAsConstructor(const Function &, const Value *args, size_t count) {
-    throw std::logic_error("unimplemented method");
-  }
-  bool strictEquals(const Symbol &a, const Symbol &b) const {
-    throw std::logic_error("unimplemented method");
-  }
-  bool strictEquals(const String &a, const String &b) const {
-    throw std::logic_error("unimplemented method");
-  }
-  bool strictEquals(const Object &a, const Object &b) const {
+                                          HostFunctionType func) override {
     throw std::logic_error("unimplemented method");
   }
 
-  bool instanceOf(const Object &o, const Function &f) {
+  Value call(const Function &, const Value &jsThis, const Value *args,
+             size_t count) override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  Value callAsConstructor(const Function &, const Value *args,
+                          size_t count) override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  bool strictEquals(const Symbol &a, const Symbol &b) const override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  bool strictEquals(const String &a, const String &b) const override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  bool strictEquals(const Object &a, const Object &b) const override {
+    throw std::logic_error("unimplemented method");
+  }
+
+  bool instanceOf(const Object &o, const Function &f) override {
     throw std::logic_error("unimplemented method");
   }
 
 private:
   duk_context *ctx;
+  Value topOfDukStackToValue();
 };
