@@ -13,24 +13,27 @@ Value DuktapeRuntime::evaluateJavaScript(
     const std::shared_ptr<const Buffer> &buffer, const std::string &sourceUrl) {
   std::cout << "inside evaluate JavaScript" << std::endl;
   duk_eval_string(ctx, reinterpret_cast<const char *>(buffer->data()));
-  return Value(topOfDukStackToValue());
+  return this->topOfStackToValue();
 }
 
-Value DuktapeRuntime::topOfDukStackToValue() {
-  if (duk_is_number(ctx, -1)) {
-    return Value(duk_get_number(ctx, -1));
-  } else if (duk_is_boolean(ctx, -1)) {
-    return Value((bool)duk_get_boolean(ctx, -1));
-  } else if (duk_is_symbol(ctx, -1)) {
-    throw std::logic_error("JS Value type Symbol not implemented");
-  } else if (duk_is_string(ctx, -1)) {
-    return Value(
-        String::createFromUtf8(*this, (const uint8_t *)duk_get_string(ctx, -1),
-                               strlen(duk_get_string(ctx, -1))));
-  } else if (duk_is_null(ctx, -1)) {
+Value DuktapeRuntime::topOfStackToValue() { return this->stackToValue(-1); }
+
+Value DuktapeRuntime::stackToValue(int stack_index) {
+  if (duk_is_number(ctx, stack_index)) {
+    return Value(duk_get_number(ctx, stack_index));
+  } else if (duk_is_boolean(ctx, stack_index)) {
+    return Value((bool)duk_get_boolean(ctx, stack_index));
+  } else if (duk_is_symbol(ctx, stack_index)) {
     return Value(nullptr);
-  } else if (duk_is_object(ctx, -1)) {
-    throw std::logic_error("JS Value type Object not implemented");
+  } else if (duk_is_string(ctx, stack_index)) {
+    Value(String::createFromUtf8(
+        *this, std::string(duk_get_string(ctx, stack_index))));
+  } else if (duk_is_null(ctx, stack_index)) {
+    return Value(nullptr);
+  } else if (duk_is_object(ctx, stack_index)) {
+    return Value(nullptr);
+  } else if (duk_is_undefined(ctx, stack_index)) {
+    return Value();
   }
-  return Value();
+  throw std::logic_error("unknown duktype");
 }

@@ -1,6 +1,7 @@
 #include "duktape-2.7.0/src/duktape.h"
 #include "jsi/jsi.h"
 #include <iostream>
+#include <variant>
 
 using namespace facebook;
 using namespace facebook::jsi;
@@ -223,5 +224,6 @@ public:
 
 private:
   duk_context *ctx;
-  Value topOfDukStackToValue();
+  Value topOfStackToValue();
+  Value stackToValue(int stack_index);
 };

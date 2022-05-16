@@ -1,9 +1,10 @@
 #include "duktape-jsi.h"
+#include "jsi/jsi.h"
 #include <iostream>
 
 int main(int argc, char **argv) {
   std::cout << "hello world" << std::endl;
-  DuktapeRuntime *dt = new DuktapeRuntime();
+  facebook::jsi::Runtime *dt = new DuktapeRuntime();
   std::cout << "dt object created!" << std::endl;
   const std::shared_ptr<const Buffer> sb =
       std::make_shared<const StringBuffer>("const temp = 5+2+20.5; temp;");
