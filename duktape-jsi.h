@@ -59,6 +59,7 @@ public:
                                        size_t length) override {
     throw std::logic_error("unimplemented method");
   }
+
   PropNameID createPropNameIDFromUtf8(const uint8_t *utf8,
                                       size_t length) override {
     throw std::logic_error("unimplemented method");
@@ -226,4 +227,20 @@ private:
   duk_context *ctx;
   Value topOfStackToValue();
   Value stackToValue(int stack_index);
+
+  class DuktapeObject : HostObject {
+  public:
+    DuktapeObject() {}
+
+    Value get(Runtime &runtime, const PropNameID &name) override {
+      return Value();
+    }
+
+    void set(Runtime &runtime, const PropNameID &name,
+             const Value &value) override {}
+
+    std::vector<PropNameID> getPropertyNames(Runtime &rt) override {
+      return std::vector<PropNameID>();
+    };
+  };
 };
