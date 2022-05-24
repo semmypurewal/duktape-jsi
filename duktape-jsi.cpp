@@ -16,6 +16,21 @@ Value DuktapeRuntime::evaluateJavaScript(
   return this->topOfStackToValue();
 }
 
+Runtime::PointerValue *
+DuktapeRuntime::cloneString(const Runtime::PointerValue *pv) {
+  duk_push_heapptr(ctx, ((DuktapePointerValue *)pv)->duk_ptr_);
+  duk_push_string(ctx, duk_get_string(ctx, -1));
+  void *temp = duk_get_heapptr(ctx, -1);
+  DuktapePointerValue *result = new DuktapePointerValue(temp);
+  return result;
+}
+
+std::string DuktapeRuntime::utf8(const String &str) {
+  duk_push_heapptr(
+      ctx, static_cast<const DuktapeStringValue &>(str).getDukHeapPtr());
+  return std::string(duk_get_string(ctx, -1));
+}
+
 Value DuktapeRuntime::topOfStackToValue() { return this->stackToValue(-1); }
 
 Value DuktapeRuntime::stackToValue(int stack_index) {
@@ -24,14 +39,13 @@ Value DuktapeRuntime::stackToValue(int stack_index) {
   } else if (duk_is_boolean(ctx, stack_index)) {
     return Value((bool)duk_get_boolean(ctx, stack_index));
   } else if (duk_is_symbol(ctx, stack_index)) {
-    return Value(nullptr);
+    return Value(DuktapeSymbolValue(duk_get_heapptr(ctx, stack_index)));
   } else if (duk_is_string(ctx, stack_index)) {
-    Value(String::createFromUtf8(
-        *this, std::string(duk_get_string(ctx, stack_index))));
+    return Value(DuktapeStringValue(duk_get_heapptr(ctx, stack_index)));
   } else if (duk_is_null(ctx, stack_index)) {
     return Value(nullptr);
   } else if (duk_is_object(ctx, stack_index)) {
-    return Value(nullptr);
+    return Value(DuktapeObjectValue(duk_get_heapptr(ctx, stack_index)));
   } else if (duk_is_undefined(ctx, stack_index)) {
     return Value();
   }
