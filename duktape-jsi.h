@@ -3,24 +3,23 @@
 #include <iostream>
 #include <variant>
 
-using namespace facebook;
-using namespace facebook::jsi;
-
-class DuktapeRuntime : public Runtime {
+class DuktapeRuntime : public facebook::jsi::Runtime {
 public:
   DuktapeRuntime();
 
-  Value evaluateJavaScript(const std::shared_ptr<const Buffer> &,
-                           const std::string &) override;
+  facebook::jsi::Value
+  evaluateJavaScript(const std::shared_ptr<const facebook::jsi::Buffer> &,
+                     const std::string &) override;
 
-  std::shared_ptr<const PreparedJavaScript>
-  prepareJavaScript(const std::shared_ptr<const Buffer> &buffer,
+  std::shared_ptr<const facebook::jsi::PreparedJavaScript>
+  prepareJavaScript(const std::shared_ptr<const facebook::jsi::Buffer> &buffer,
                     std::string sourceURL) override {
     throw std::logic_error("prepareJavaScript: unimplemented method");
   }
 
-  Value evaluatePreparedJavaScript(
-      const std::shared_ptr<const PreparedJavaScript> &js) override {
+  facebook::jsi::Value evaluatePreparedJavaScript(
+      const std::shared_ptr<const facebook::jsi::PreparedJavaScript> &js)
+      override {
     throw std::logic_error("evaluatePreparedJavaScript: unimplemented method");
   }
 
@@ -28,7 +27,7 @@ public:
     throw std::logic_error("drainMicrotasks: unimplemented method");
   }
 
-  Object global() override {
+  facebook::jsi::Object global() override {
     throw std::logic_error("global: unimplemented method");
   }
 
@@ -40,191 +39,221 @@ public:
     throw std::logic_error("isInspectable: unimplemented method");
   }
 
-  Instrumentation &instrumentation() override {
+  facebook::jsi::Instrumentation &instrumentation() override {
     throw std::logic_error("instrumentation: unimplemented method");
   }
 
-  PointerValue *cloneSymbol(const Runtime::PointerValue *pv) override {
+  facebook::jsi::Runtime::PointerValue *
+  cloneSymbol(const facebook::jsi::Runtime::PointerValue *pv) override {
     throw std::logic_error("cloneSymbol: unimplemented method");
   }
 
-  PointerValue *cloneString(const Runtime::PointerValue *pv) override;
+  facebook::jsi::Runtime::PointerValue *
+  cloneString(const facebook::jsi::Runtime::PointerValue *pv) override;
 
-  PointerValue *cloneObject(const Runtime::PointerValue *pv) override {
+  facebook::jsi::Runtime::PointerValue *
+  cloneObject(const facebook::jsi::Runtime::PointerValue *pv) override {
     throw std::logic_error("cloneObject: unimplemented method");
   }
-  PointerValue *clonePropNameID(const Runtime::PointerValue *pv) override {
+  facebook::jsi::Runtime::PointerValue *
+  clonePropNameID(const facebook::jsi::Runtime::PointerValue *pv) override {
     throw std::logic_error("clonePropNameID: unimplemented method");
   }
 
-  PropNameID createPropNameIDFromAscii(const char *str,
-                                       size_t length) override {
+  facebook::jsi::PropNameID createPropNameIDFromAscii(const char *str,
+                                                      size_t length) override {
     throw std::logic_error("createPropNameIDFromAscii: unimplemented method");
   }
 
-  PropNameID createPropNameIDFromUtf8(const uint8_t *utf8,
-                                      size_t length) override {
+  facebook::jsi::PropNameID createPropNameIDFromUtf8(const uint8_t *utf8,
+                                                     size_t length) override {
     throw std::logic_error("createPropNameIDFromUtf8: unimplemented method");
   }
-  PropNameID createPropNameIDFromString(const String &str) override {
+  facebook::jsi::PropNameID
+  createPropNameIDFromString(const facebook::jsi::String &str) override {
     throw std::logic_error("createPropNameIDFromString: unimplemented method");
   }
-  PropNameID createPropNameIDFromSymbol(const Symbol &sym) override {
+  facebook::jsi::PropNameID
+  createPropNameIDFromSymbol(const facebook::jsi::Symbol &sym) override {
     throw std::logic_error("createPropNameIDFromSymbol: unimplemented method");
   }
-  std::string utf8(const PropNameID &) override {
+  std::string utf8(const facebook::jsi::PropNameID &) override {
     throw std::logic_error("utf8: unimplemented method");
   }
-  bool compare(const PropNameID &, const PropNameID &) override {
+  bool compare(const facebook::jsi::PropNameID &,
+               const facebook::jsi::PropNameID &) override {
     throw std::logic_error("compare: unimplemented method");
   }
 
-  std::string symbolToString(const Symbol &) override {
+  std::string symbolToString(const facebook::jsi::Symbol &) override {
     throw std::logic_error("symbolToString: unimplemented method");
   }
 
-  String createStringFromAscii(const char *str, size_t length) override {
+  facebook::jsi::String createStringFromAscii(const char *str,
+                                              size_t length) override {
     throw std::logic_error("createStringFromAscii: unimplemented method");
   }
 
-  String createStringFromUtf8(const uint8_t *utf8, size_t length) override {
+  facebook::jsi::String createStringFromUtf8(const uint8_t *utf8,
+                                             size_t length) override {
     throw std::logic_error("createStringFromUtf8: unimplemented method");
   }
 
-  std::string utf8(const String &str) override;
+  std::string utf8(const facebook::jsi::String &str) override;
 
-  Object createObject() override {
+  facebook::jsi::Object createObject() override {
     throw std::logic_error("createObject: unimplemented method");
   }
 
-  Object createObject(std::shared_ptr<HostObject> ho) override {
+  facebook::jsi::Object
+  createObject(std::shared_ptr<facebook::jsi::HostObject> ho) override {
     throw std::logic_error("createObject: unimplemented method");
   }
 
-  std::shared_ptr<HostObject> getHostObject(const jsi::Object &) override {
+  std::shared_ptr<facebook::jsi::HostObject>
+  getHostObject(const facebook::jsi::Object &) override {
     throw std::logic_error("getHostObject: unimplemented method");
   }
 
-  HostFunctionType &getHostFunction(const jsi::Function &) override {
+  facebook::jsi::HostFunctionType &
+  getHostFunction(const facebook::jsi::Function &) override {
     throw std::logic_error("getHostFunction: unimplemented method");
   }
 
-  Value getProperty(const Object &, const PropNameID &name) override {
+  facebook::jsi::Value
+  getProperty(const facebook::jsi::Object &,
+              const facebook::jsi::PropNameID &name) override {
     throw std::logic_error("getProperty: unimplemented method");
   }
 
-  Value getProperty(const Object &, const String &name) override {
+  facebook::jsi::Value getProperty(const facebook::jsi::Object &,
+                                   const facebook::jsi::String &name) override {
     throw std::logic_error("getProperty: unimplemented method");
   }
 
-  bool hasProperty(const Object &, const PropNameID &name) override {
+  bool hasProperty(const facebook::jsi::Object &,
+                   const facebook::jsi::PropNameID &name) override {
     throw std::logic_error("hasProperty: unimplemented method");
   }
 
-  bool hasProperty(const Object &, const String &name) override {
+  bool hasProperty(const facebook::jsi::Object &,
+                   const facebook::jsi::String &name) override {
     throw std::logic_error("hasProperty: unimplemented method");
   }
 
-  void setPropertyValue(Object &, const PropNameID &name,
-                        const Value &value) override {
+  void setPropertyValue(facebook::jsi::Object &,
+                        const facebook::jsi::PropNameID &name,
+                        const facebook::jsi::Value &value) override {
     throw std::logic_error("setPropertyValue: unimplemented method");
   }
 
-  void setPropertyValue(Object &, const String &name,
-                        const Value &value) override {
+  void setPropertyValue(facebook::jsi::Object &,
+                        const facebook::jsi::String &name,
+                        const facebook::jsi::Value &value) override {
     throw std::logic_error("setPropertyValue: unimplemented method");
   }
 
-  bool isArray(const Object &) const override {
+  bool isArray(const facebook::jsi::Object &) const override {
     throw std::logic_error("isArray: unimplemented method");
   }
 
-  bool isArrayBuffer(const Object &) const override {
+  bool isArrayBuffer(const facebook::jsi::Object &) const override {
     throw std::logic_error("isArrayBuffer: unimplemented method");
   }
 
-  bool isFunction(const Object &) const override {
+  bool isFunction(const facebook::jsi::Object &) const override {
     throw std::logic_error("isFunction: unimplemented method");
   }
 
-  bool isHostObject(const jsi::Object &) const override {
+  bool isHostObject(const facebook::jsi::Object &) const override {
     throw std::logic_error("isHostObject: unimplemented method");
   }
 
-  bool isHostFunction(const jsi::Function &) const override {
+  bool isHostFunction(const facebook::jsi::Function &) const override {
     throw std::logic_error("isHostFunction: unimplemented method");
   }
 
-  Array getPropertyNames(const Object &) override {
+  facebook::jsi::Array
+  getPropertyNames(const facebook::jsi::Object &) override {
     throw std::logic_error("getPropertyNames: unimplemented method");
   }
 
-  WeakObject createWeakObject(const Object &) override {
+  facebook::jsi::WeakObject
+  createWeakObject(const facebook::jsi::Object &) override {
     throw std::logic_error("createWeakObject: unimplemented method");
   }
 
-  Value lockWeakObject(WeakObject &) override {
+  facebook::jsi::Value lockWeakObject(facebook::jsi::WeakObject &) override {
     throw std::logic_error("lockWeakObject: unimplemented method");
   }
 
-  Array createArray(size_t length) override {
+  facebook::jsi::Array createArray(size_t length) override {
     throw std::logic_error("createArray: unimplemented method");
   }
 
-  size_t size(const Array &) override {
+  size_t size(const facebook::jsi::Array &) override {
     throw std::logic_error("size: unimplemented method");
   }
 
-  size_t size(const ArrayBuffer &) override {
+  size_t size(const facebook::jsi::ArrayBuffer &) override {
     throw std::logic_error("size: unimplemented method");
   }
 
-  uint8_t *data(const ArrayBuffer &) override {
+  uint8_t *data(const facebook::jsi::ArrayBuffer &) override {
     throw std::logic_error("data: unimplemented method");
   }
 
-  Value getValueAtIndex(const Array &, size_t i) override {
+  facebook::jsi::Value getValueAtIndex(const facebook::jsi::Array &,
+                                       size_t i) override {
     throw std::logic_error("getValueAtIndex: unimplemented method");
   }
 
-  void setValueAtIndexImpl(Array &, size_t i, const Value &value) override {
+  void setValueAtIndexImpl(facebook::jsi::Array &, size_t i,
+                           const facebook::jsi::Value &value) override {
     throw std::logic_error("setValueAtIndexImpl: unimplemented method");
   }
 
-  Function createFunctionFromHostFunction(const PropNameID &name,
-                                          unsigned int paramCount,
-                                          HostFunctionType func) override {
+  facebook::jsi::Function createFunctionFromHostFunction(
+      const facebook::jsi::PropNameID &name, unsigned int paramCount,
+      facebook::jsi::HostFunctionType func) override {
     throw std::logic_error(
         "createFunctionFromHostFunction: unimplemented method");
   }
 
-  Value call(const Function &, const Value &jsThis, const Value *args,
-             size_t count) override {
+  facebook::jsi::Value call(const facebook::jsi::Function &,
+                            const facebook::jsi::Value &jsThis,
+                            const facebook::jsi::Value *args,
+                            size_t count) override {
     throw std::logic_error("call: unimplemented method");
   }
 
-  Value callAsConstructor(const Function &, const Value *args,
-                          size_t count) override {
+  facebook::jsi::Value callAsConstructor(const facebook::jsi::Function &,
+                                         const facebook::jsi::Value *args,
+                                         size_t count) override {
     throw std::logic_error("callAsConstructor: unimplemented method");
   }
 
-  bool strictEquals(const Symbol &a, const Symbol &b) const override {
+  bool strictEquals(const facebook::jsi::Symbol &a,
+                    const facebook::jsi::Symbol &b) const override {
     throw std::logic_error("strictEquals: unimplemented method");
   }
 
-  bool strictEquals(const String &a, const String &b) const override {
+  bool strictEquals(const facebook::jsi::String &a,
+                    const facebook::jsi::String &b) const override {
     throw std::logic_error("strictEquals: unimplemented method");
   }
 
-  bool strictEquals(const Object &a, const Object &b) const override {
+  bool strictEquals(const facebook::jsi::Object &a,
+                    const facebook::jsi::Object &b) const override {
     throw std::logic_error("strictEquals: unimplemented method");
   }
 
-  bool instanceOf(const Object &o, const Function &f) override {
+  bool instanceOf(const facebook::jsi::Object &o,
+                  const facebook::jsi::Function &f) override {
     throw std::logic_error("instanceOf: unimplemented method");
   }
 
-  struct DuktapePointerValue : public PointerValue {
+  struct DuktapePointerValue : public facebook::jsi::Runtime::PointerValue {
     DuktapePointerValue(void *ptr) : duk_ptr_(ptr){};
     void invalidate() override{};
     void *duk_ptr_;
@@ -241,28 +270,30 @@ public:
     }
   };
 
-  using DuktapeObjectValue = DuktapeValue<Object>;
-  using DuktapeSymbolValue = DuktapeValue<Symbol>;
-  using DuktapeStringValue = DuktapeValue<String>;
+  using DuktapeObjectValue = DuktapeValue<facebook::jsi::Object>;
+  using DuktapeSymbolValue = DuktapeValue<facebook::jsi::Symbol>;
+  using DuktapeStringValue = DuktapeValue<facebook::jsi::String>;
 
 private:
   duk_context *ctx;
-  Value topOfStackToValue();
-  Value stackToValue(int stack_index);
+  facebook::jsi::Value topOfStackToValue();
+  facebook::jsi::Value stackToValue(int stack_index);
 
-  class DuktapeObject : HostObject {
+  class DuktapeObject : facebook::jsi::HostObject {
   public:
     DuktapeObject() {}
 
-    Value get(Runtime &runtime, const PropNameID &name) override {
-      return Value();
+    facebook::jsi::Value get(Runtime &runtime,
+                             const facebook::jsi::PropNameID &name) override {
+      return facebook::jsi::Value();
     }
 
-    void set(Runtime &runtime, const PropNameID &name,
-             const Value &value) override {}
+    void set(Runtime &runtime, const facebook::jsi::PropNameID &name,
+             const facebook::jsi::Value &value) override {}
 
-    std::vector<PropNameID> getPropertyNames(Runtime &rt) override {
-      return std::vector<PropNameID>();
+    std::vector<facebook::jsi::PropNameID>
+    getPropertyNames(Runtime &rt) override {
+      return std::vector<facebook::jsi::PropNameID>();
     };
   };
 };
