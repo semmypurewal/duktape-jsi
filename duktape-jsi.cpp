@@ -4,14 +4,10 @@
 using namespace facebook;
 using namespace facebook::jsi;
 
-DuktapeRuntime::DuktapeRuntime() {
-  std::cout << "constructor called" << std::endl;
-  ctx = duk_create_heap_default();
-}
+DuktapeRuntime::DuktapeRuntime() { ctx = duk_create_heap_default(); }
 
 Value DuktapeRuntime::evaluateJavaScript(
     const std::shared_ptr<const Buffer> &buffer, const std::string &sourceUrl) {
-  std::cout << "inside evaluate JavaScript" << std::endl;
   duk_eval_string(ctx, reinterpret_cast<const char *>(buffer->data()));
   return this->topOfStackToValue();
 }
