@@ -1,5 +1,6 @@
 #include "duktape-jsi.h"
 #include "jsi/jsi.h"
+#include <cassert>
 
 using namespace facebook;
 
@@ -21,10 +22,36 @@ DuktapeRuntime::cloneString(const facebook::jsi::Runtime::PointerValue *pv) {
   return result;
 }
 
+facebook::jsi::Runtime::PointerValue *
+DuktapeRuntime::cloneObject(const facebook::jsi::Runtime::PointerValue *pv) {
+  /* shallow clone for now, maybe that's okay? */
+  duk_push_object(ctx);
+  int clone_index = duk_normalize_index(ctx, -1);
+  duk_push_heapptr(ctx, ((DuktapePointerValue *)pv)->duk_ptr_);
+  duk_enum(ctx, -1, 0);
+  while (duk_next(ctx, -1, 1)) {
+    duk_put_prop(ctx, clone_index);
+  }
+  return new DuktapePointerValue(duk_get_heapptr(ctx, clone_index));
+}
+
 std::string DuktapeRuntime::utf8(const facebook::jsi::String &str) {
   duk_push_heapptr(
       ctx, static_cast<const DuktapeStringValue &>(str).getDukHeapPtr());
   return std::string(duk_get_string(ctx, -1));
+}
+
+facebook::jsi::Value
+DuktapeRuntime::getProperty(const facebook::jsi::Object &obj,
+                            const facebook::jsi::String &name) {
+  duk_push_heapptr(
+      ctx, static_cast<const DuktapeObjectValue &>(obj).getDukHeapPtr());
+  assert(duk_is_object(ctx, -1));
+  auto obj_index = duk_normalize_index(ctx, -1);
+  duk_push_string(ctx, name.utf8(*this).c_str());
+  assert(duk_is_object(ctx, obj_index));
+  duk_get_prop(ctx, -3);
+  return topOfStackToValue();
 }
 
 facebook::jsi::Value DuktapeRuntime::topOfStackToValue() {

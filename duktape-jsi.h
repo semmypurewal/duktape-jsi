@@ -52,9 +52,8 @@ public:
   cloneString(const facebook::jsi::Runtime::PointerValue *pv) override;
 
   facebook::jsi::Runtime::PointerValue *
-  cloneObject(const facebook::jsi::Runtime::PointerValue *pv) override {
-    throw std::logic_error("cloneObject: unimplemented method");
-  }
+  cloneObject(const facebook::jsi::Runtime::PointerValue *pv) override;
+
   facebook::jsi::Runtime::PointerValue *
   clonePropNameID(const facebook::jsi::Runtime::PointerValue *pv) override {
     throw std::logic_error("clonePropNameID: unimplemented method");
@@ -91,7 +90,8 @@ public:
 
   facebook::jsi::String createStringFromAscii(const char *str,
                                               size_t length) override {
-    throw std::logic_error("createStringFromAscii: unimplemented method");
+    duk_push_string(ctx, str);
+    return DuktapeStringValue(duk_get_heapptr(ctx, -1));
   }
 
   facebook::jsi::String createStringFromUtf8(const uint8_t *utf8,
@@ -121,15 +121,13 @@ public:
   }
 
   facebook::jsi::Value
-  getProperty(const facebook::jsi::Object &,
+  getProperty(const facebook::jsi::Object &obj,
               const facebook::jsi::PropNameID &name) override {
     throw std::logic_error("getProperty: unimplemented method");
   }
 
   facebook::jsi::Value getProperty(const facebook::jsi::Object &,
-                                   const facebook::jsi::String &name) override {
-    throw std::logic_error("getProperty: unimplemented method");
-  }
+                                   const facebook::jsi::String &) override;
 
   bool hasProperty(const facebook::jsi::Object &,
                    const facebook::jsi::PropNameID &name) override {
