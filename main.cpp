@@ -5,37 +5,30 @@
 
 using namespace facebook;
 
+jsi::Value evaluateScript(jsi::Runtime &rt, const std::string script) {
+  return rt.evaluateJavaScript(
+      std::make_shared<const jsi::StringBuffer>(script), "");
+}
+
 int main(int argc, char **argv) {
   jsi::Runtime *dt = new DuktapeRuntime();
   jsi::Value v;
 
-  const std::shared_ptr<const jsi::Buffer> sb =
-      std::make_shared<const jsi::StringBuffer>("const temp = 5+2+20.5; temp;");
-  v = dt->evaluateJavaScript(sb, "");
+  v = evaluateScript(*dt, "const temp = 5+2+20.5; temp;");
   assert(v.getNumber() == 27.5);
 
-  const std::shared_ptr<const jsi::Buffer> sb2 =
-      std::make_shared<const jsi::StringBuffer>(
-          "const result = temp + 50; result;");
-  v = dt->evaluateJavaScript(sb2, "");
+  v = evaluateScript(*dt, "const result = temp + 50; result;");
   assert(v.getNumber() == 77.5);
 
-  const std::shared_ptr<const jsi::Buffer> sb3 =
-      std::make_shared<const jsi::StringBuffer>("'hello world';");
-  v = dt->evaluateJavaScript(sb3, "");
+  v = evaluateScript(*dt, "'hello world';");
   assert(v.getString(*dt).utf8(*dt) == std::string("hello world"));
 
-  const std::shared_ptr<const jsi::Buffer> sb4 =
-      std::make_shared<const jsi::StringBuffer>(
-          "const temp = {test:'hello', test2: 42, bool_test:false}; temp;");
-  v = dt->evaluateJavaScript(sb4, "");
+  v = evaluateScript(
+      *dt, "const temp = {test:'hello', test2: 42, bool_test:false}; temp;");
   auto obj = v.getObject(*dt);
-  auto temp = obj.getProperty(*dt, "test");
-  assert(temp.getString(*dt).utf8(*dt) == std::string("hello"));
-  temp = obj.getProperty(*dt, "test2");
-  assert(temp.getNumber() == 42);
-  temp = obj.getProperty(*dt, "bool_test");
-  assert(temp.getBool() == false);
+  assert(obj.getProperty(*dt, "test").getString(*dt).utf8(*dt) == "hello");
+  assert(obj.getProperty(*dt, "test2").getNumber() == 42);
+  assert(obj.getProperty(*dt, "bool_test").getBool() == false);
 
   std::cout << "OK!" << std::endl;
 }
