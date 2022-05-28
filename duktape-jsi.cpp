@@ -13,6 +13,10 @@ facebook::jsi::Value DuktapeRuntime::evaluateJavaScript(
   return this->topOfStackToValue();
 }
 
+std::string DuktapeRuntime::description() { return "Duktape 2.7 Runtime"; }
+
+bool DuktapeRuntime::isInspectable() { return false; }
+
 facebook::jsi::Runtime::PointerValue *
 DuktapeRuntime::cloneString(const facebook::jsi::Runtime::PointerValue *pv) {
   duk_push_heapptr(ctx, ((DuktapePointerValue *)pv)->duk_ptr_);
@@ -35,6 +39,17 @@ DuktapeRuntime::cloneObject(const facebook::jsi::Runtime::PointerValue *pv) {
   return new DuktapePointerValue(duk_get_heapptr(ctx, clone_index));
 }
 
+facebook::jsi::String DuktapeRuntime::createStringFromAscii(const char *str,
+                                                            size_t length) {
+  duk_push_string(ctx, str);
+  return DuktapeStringValue(duk_get_heapptr(ctx, -1));
+}
+
+facebook::jsi::Object DuktapeRuntime::createObject() {
+  duk_push_object(ctx);
+  return DuktapeObjectValue(duk_get_heapptr(ctx, -1));
+}
+
 std::string DuktapeRuntime::utf8(const facebook::jsi::String &str) {
   duk_push_heapptr(
       ctx, static_cast<const DuktapeStringValue &>(str).getDukHeapPtr());
@@ -50,8 +65,25 @@ DuktapeRuntime::getProperty(const facebook::jsi::Object &obj,
   auto obj_index = duk_normalize_index(ctx, -1);
   duk_push_string(ctx, name.utf8(*this).c_str());
   assert(duk_is_object(ctx, obj_index));
-  duk_get_prop(ctx, -3);
+  assert(duk_is_string(ctx, -1));
+  duk_get_prop(ctx, obj_index);
   return topOfStackToValue();
+}
+
+void DuktapeRuntime::setPropertyValue(facebook::jsi::Object &obj,
+                                      const facebook::jsi::String &key,
+                                      const facebook::jsi::Value &value) {
+  duk_push_jsi_ptr_value(ctx, std::move(obj));
+  int obj_index = duk_normalize_index(ctx, -1);
+  assert(duk_is_object(ctx, obj_index));
+  duk_push_jsi_ptr_value(ctx, std::move(key));
+  assert(duk_is_string(ctx, -1));
+  int key_index = duk_normalize_index(ctx, -1);
+  duk_push_jsi_value(ctx, value);
+  int value_index = duk_normalize_index(ctx, -1);
+  duk_pull(ctx, key_index);
+  duk_pull(ctx, value_index - 1);
+  duk_put_prop(ctx, obj_index);
 }
 
 facebook::jsi::Value DuktapeRuntime::topOfStackToValue() {

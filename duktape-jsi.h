@@ -1,5 +1,6 @@
 #include "duktape-2.7.0/src/duktape.h"
 #include "jsi/jsi.h"
+#include <cassert>
 #include <iostream>
 #include <variant>
 
@@ -31,13 +32,9 @@ public:
     throw std::logic_error("global: unimplemented method");
   }
 
-  std::string description() override {
-    throw std::logic_error("description: unimplemented method");
-  }
+  std::string description() override;
 
-  bool isInspectable() override {
-    throw std::logic_error("isInspectable: unimplemented method");
-  }
+  bool isInspectable() override;
 
   facebook::jsi::Instrumentation &instrumentation() override {
     throw std::logic_error("instrumentation: unimplemented method");
@@ -89,10 +86,7 @@ public:
   }
 
   facebook::jsi::String createStringFromAscii(const char *str,
-                                              size_t length) override {
-    duk_push_string(ctx, str);
-    return DuktapeStringValue(duk_get_heapptr(ctx, -1));
-  }
+                                              size_t length) override;
 
   facebook::jsi::String createStringFromUtf8(const uint8_t *utf8,
                                              size_t length) override {
@@ -101,9 +95,7 @@ public:
 
   std::string utf8(const facebook::jsi::String &str) override;
 
-  facebook::jsi::Object createObject() override {
-    throw std::logic_error("createObject: unimplemented method");
-  }
+  facebook::jsi::Object createObject() override;
 
   facebook::jsi::Object
   createObject(std::shared_ptr<facebook::jsi::HostObject> ho) override {
@@ -145,11 +137,9 @@ public:
     throw std::logic_error("setPropertyValue: unimplemented method");
   }
 
-  void setPropertyValue(facebook::jsi::Object &,
-                        const facebook::jsi::String &name,
-                        const facebook::jsi::Value &value) override {
-    throw std::logic_error("setPropertyValue: unimplemented method");
-  }
+  void setPropertyValue(facebook::jsi::Object &obj,
+                        const facebook::jsi::String &key,
+                        const facebook::jsi::Value &value) override;
 
   bool isArray(const facebook::jsi::Object &) const override {
     throw std::logic_error("isArray: unimplemented method");
@@ -251,27 +241,6 @@ public:
     throw std::logic_error("instanceOf: unimplemented method");
   }
 
-  struct DuktapePointerValue : public facebook::jsi::Runtime::PointerValue {
-    DuktapePointerValue(void *ptr) : duk_ptr_(ptr){};
-    void invalidate() override{};
-    void *duk_ptr_;
-  };
-
-  template <typename T> class DuktapeValue : public T {
-  public:
-    DuktapeValue<T>(void *ptr) : T(new DuktapePointerValue(ptr)){};
-    DuktapeValue<T>(T &&other) : T(std::move(other)){};
-    void *getDukHeapPtr() const {
-      DuktapePointerValue *dtv = (DuktapePointerValue *)this->ptr_;
-      void *duk_heap_ptr = dtv->duk_ptr_;
-      return duk_heap_ptr;
-    }
-  };
-
-  using DuktapeObjectValue = DuktapeValue<facebook::jsi::Object>;
-  using DuktapeSymbolValue = DuktapeValue<facebook::jsi::Symbol>;
-  using DuktapeStringValue = DuktapeValue<facebook::jsi::String>;
-
 private:
   duk_context *ctx;
   facebook::jsi::Value topOfStackToValue();
@@ -294,4 +263,57 @@ private:
       return std::vector<facebook::jsi::PropNameID>();
     };
   };
+
+  struct DuktapePointerValue : public facebook::jsi::Runtime::PointerValue {
+    DuktapePointerValue(void *ptr) : duk_ptr_(ptr){};
+    void invalidate() override{};
+    void *duk_ptr_;
+  };
+
+  template <typename T> class DuktapeValue : public T {
+  public:
+    DuktapeValue<T>(void *ptr) : T(new DuktapePointerValue(ptr)){};
+    DuktapeValue<T>(T &&other) : T(std::move(other)){};
+    void *getDukHeapPtr() const {
+      DuktapePointerValue *dtv = (DuktapePointerValue *)this->ptr_;
+      void *duk_heap_ptr = dtv->duk_ptr_;
+      return duk_heap_ptr;
+    }
+  };
+
+  using DuktapeObjectValue = DuktapeValue<facebook::jsi::Object>;
+  using DuktapeSymbolValue = DuktapeValue<facebook::jsi::Symbol>;
+  using DuktapeStringValue = DuktapeValue<facebook::jsi::String>;
+
+  void duk_push_jsi_value(duk_context *ctx, const facebook::jsi::Value &value) {
+    if (value.isUndefined()) {
+      duk_push_undefined(ctx);
+    } else if (value.isNull()) {
+      duk_push_null(ctx);
+    } else if (value.isBool()) {
+      duk_push_boolean(ctx, value.getBool());
+    } else if (value.isNumber()) {
+      duk_push_number(ctx, value.getNumber());
+    } else if (value.isString()) {
+      duk_push_jsi_ptr_value(ctx, value.getString(*this));
+    } else if (value.isSymbol()) {
+      duk_push_jsi_ptr_value(ctx, value.getSymbol(*this));
+    } else if (value.isObject()) {
+      duk_push_jsi_ptr_value(ctx, value.getObject(*this));
+    } else {
+      throw std::logic_error("unknown duk type");
+    }
+  }
+
+  template <typename T>
+  void duk_push_jsi_ptr_value(duk_context *ctx, T &&value) {
+    duk_push_heapptr(ctx,
+                     static_cast<DuktapeValue<T> &>(value).getDukHeapPtr());
+  }
+
+  template <typename T>
+  void duk_push_jsi_ptr_value(duk_context *ctx, const T &&value) {
+    duk_push_heapptr(
+        ctx, static_cast<const DuktapeValue<T> &>(value).getDukHeapPtr());
+  }
 };

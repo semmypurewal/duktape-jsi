@@ -30,5 +30,18 @@ int main(int argc, char **argv) {
   assert(obj.getProperty(*dt, "test2").getNumber() == 42);
   assert(obj.getProperty(*dt, "bool_test").getBool() == false);
 
+  obj.setProperty(*dt, "num_test", 24);
+  obj.setProperty(*dt, "KEY", "VALUE");
+  obj.setProperty(*dt, "bool_test", true);
+  assert(obj.getProperty(*dt, "num_test").getNumber() == 24);
+  assert(obj.getProperty(*dt, "KEY").getString(*dt).utf8(*dt) == "VALUE");
+  assert(obj.getProperty(*dt, "bool_test").getBool() == true);
+
+  v = evaluateScript(*dt, "var ary = ['a','b','c']; ary;");
+  auto ary = v.getObject(*dt);
+  assert(ary.getProperty(*dt, "1").getString(*dt).utf8(*dt) == "b");
+  assert(ary.getProperty(*dt, "2").getString(*dt).utf8(*dt) == "c");
+  assert(ary.getProperty(*dt, "3").isUndefined());
+
   std::cout << "OK!" << std::endl;
 }
