@@ -17,6 +17,11 @@ std::string DuktapeRuntime::description() { return "Duktape 2.7 Runtime"; }
 
 bool DuktapeRuntime::isInspectable() { return false; }
 
+facebook::jsi::Object DuktapeRuntime::global() {
+  duk_push_global_object(ctx);
+  return DuktapeObjectValue(duk_get_heapptr(ctx, -1));
+}
+
 facebook::jsi::Runtime::PointerValue *
 DuktapeRuntime::cloneString(const facebook::jsi::Runtime::PointerValue *pv) {
   duk_push_heapptr(ctx, ((DuktapePointerValue *)pv)->duk_ptr_);

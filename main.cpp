@@ -20,8 +20,8 @@ int main(int argc, char **argv) {
   v = evaluateScript(*dt, "const result = temp + 50; result;");
   assert(v.getNumber() == 77.5);
 
-  v = evaluateScript(*dt, "'hello world';");
-  assert(v.getString(*dt).utf8(*dt) == std::string("hello world"));
+  v = evaluateScript(*dt, "'hello from JavaScript!';");
+  assert(v.getString(*dt).utf8(*dt) == std::string("hello from JavaScript!"));
 
   v = evaluateScript(
       *dt, "const temp = {test:'hello', test2: 42, bool_test:false}; temp;");
@@ -42,6 +42,12 @@ int main(int argc, char **argv) {
   assert(ary.getProperty(*dt, "1").getString(*dt).utf8(*dt) == "b");
   assert(ary.getProperty(*dt, "2").getString(*dt).utf8(*dt) == "c");
   assert(ary.getProperty(*dt, "3").isUndefined());
+
+  auto global = dt->global();
+  global.setProperty(*dt, "dukMsg", "hello from C++!");
+  v = evaluateScript(*dt, "dukMsg;");
+  assert(v.isString());
+  assert(v.getString(*dt).utf8(*dt) == "hello from C++!");
 
   std::cout << "OK!" << std::endl;
 }

@@ -28,9 +28,7 @@ public:
     throw std::logic_error("drainMicrotasks: unimplemented method");
   }
 
-  facebook::jsi::Object global() override {
-    throw std::logic_error("global: unimplemented method");
-  }
+  facebook::jsi::Object global() override;
 
   std::string description() override;
 
