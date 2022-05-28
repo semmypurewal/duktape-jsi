@@ -19,7 +19,7 @@ bool DuktapeRuntime::isInspectable() { return false; }
 
 facebook::jsi::Object DuktapeRuntime::global() {
   duk_push_global_object(ctx);
-  return DuktapeObjectValue(duk_get_heapptr(ctx, -1));
+  return DuktapeObject(duk_get_heapptr(ctx, -1));
 }
 
 facebook::jsi::Runtime::PointerValue *
@@ -47,25 +47,25 @@ DuktapeRuntime::cloneObject(const facebook::jsi::Runtime::PointerValue *pv) {
 facebook::jsi::String DuktapeRuntime::createStringFromAscii(const char *str,
                                                             size_t length) {
   duk_push_string(ctx, str);
-  return DuktapeStringValue(duk_get_heapptr(ctx, -1));
+  return DuktapeString(duk_get_heapptr(ctx, -1));
 }
 
 facebook::jsi::Object DuktapeRuntime::createObject() {
   duk_push_object(ctx);
-  return DuktapeObjectValue(duk_get_heapptr(ctx, -1));
+  return DuktapeObject(duk_get_heapptr(ctx, -1));
 }
 
 std::string DuktapeRuntime::utf8(const facebook::jsi::String &str) {
-  duk_push_heapptr(
-      ctx, static_cast<const DuktapeStringValue &>(str).getDukHeapPtr());
+  duk_push_heapptr(ctx,
+                   static_cast<const DuktapeString &>(str).getDukHeapPtr());
   return std::string(duk_get_string(ctx, -1));
 }
 
 facebook::jsi::Value
 DuktapeRuntime::getProperty(const facebook::jsi::Object &obj,
                             const facebook::jsi::String &name) {
-  duk_push_heapptr(
-      ctx, static_cast<const DuktapeObjectValue &>(obj).getDukHeapPtr());
+  duk_push_heapptr(ctx,
+                   static_cast<const DuktapeObject &>(obj).getDukHeapPtr());
   assert(duk_is_object(ctx, -1));
   auto obj_index = duk_normalize_index(ctx, -1);
   duk_push_string(ctx, name.utf8(*this).c_str());
@@ -102,15 +102,15 @@ facebook::jsi::Value DuktapeRuntime::stackToValue(int stack_index) {
     return facebook::jsi::Value((bool)duk_get_boolean(ctx, stack_index));
   } else if (duk_is_symbol(ctx, stack_index)) {
     return facebook::jsi::Value(
-        DuktapeSymbolValue(duk_get_heapptr(ctx, stack_index)));
+        DuktapeSymbol(duk_get_heapptr(ctx, stack_index)));
   } else if (duk_is_string(ctx, stack_index)) {
     return facebook::jsi::Value(
-        DuktapeStringValue(duk_get_heapptr(ctx, stack_index)));
+        DuktapeString(duk_get_heapptr(ctx, stack_index)));
   } else if (duk_is_null(ctx, stack_index)) {
     return facebook::jsi::Value(nullptr);
   } else if (duk_is_object(ctx, stack_index)) {
     return facebook::jsi::Value(
-        DuktapeObjectValue(duk_get_heapptr(ctx, stack_index)));
+        DuktapeObject(duk_get_heapptr(ctx, stack_index)));
   } else if (duk_is_undefined(ctx, stack_index)) {
     return facebook::jsi::Value();
   }
