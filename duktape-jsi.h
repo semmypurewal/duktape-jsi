@@ -2,7 +2,6 @@
 #include "jsi/jsi.h"
 #include <cassert>
 #include <iostream>
-#include <variant>
 
 class DuktapeRuntime : public facebook::jsi::Runtime {
 public:
