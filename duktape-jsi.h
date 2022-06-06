@@ -2,10 +2,12 @@
 #include "jsi/jsi.h"
 #include <cassert>
 #include <iostream>
+#include <map>
 
 class DuktapeRuntime : public facebook::jsi::Runtime {
 public:
   DuktapeRuntime();
+  ~DuktapeRuntime();
 
   facebook::jsi::Value
   evaluateJavaScript(const std::shared_ptr<const facebook::jsi::Buffer> &,
@@ -54,9 +56,7 @@ public:
   }
 
   facebook::jsi::PropNameID createPropNameIDFromAscii(const char *str,
-                                                      size_t length) override {
-    throw std::logic_error("createPropNameIDFromAscii: unimplemented method");
-  }
+                                                      size_t l) override;
 
   facebook::jsi::PropNameID createPropNameIDFromUtf8(const uint8_t *utf8,
                                                      size_t length) override {
@@ -146,9 +146,7 @@ public:
     throw std::logic_error("isArrayBuffer: unimplemented method");
   }
 
-  bool isFunction(const facebook::jsi::Object &) const override {
-    throw std::logic_error("isFunction: unimplemented method");
-  }
+  bool isFunction(const facebook::jsi::Object &) const override;
 
   bool isHostObject(const facebook::jsi::Object &) const override {
     throw std::logic_error("isHostObject: unimplemented method");
@@ -198,12 +196,10 @@ public:
     throw std::logic_error("setValueAtIndexImpl: unimplemented method");
   }
 
-  facebook::jsi::Function createFunctionFromHostFunction(
-      const facebook::jsi::PropNameID &name, unsigned int paramCount,
-      facebook::jsi::HostFunctionType func) override {
-    throw std::logic_error(
-        "createFunctionFromHostFunction: unimplemented method");
-  }
+  facebook::jsi::Function
+  createFunctionFromHostFunction(const facebook::jsi::PropNameID &,
+                                 unsigned int,
+                                 facebook::jsi::HostFunctionType) override;
 
   facebook::jsi::Value call(const facebook::jsi::Function &,
                             const facebook::jsi::Value &jsThis,
@@ -240,8 +236,23 @@ public:
 
 private:
   duk_context *ctx;
-  facebook::jsi::Value topOfStackToValue();
-  facebook::jsi::Value stackToValue(int stack_index);
+  static unsigned int current_hf_id;
+  static facebook::jsi::Value stackToValue(duk_context *ctx, int stack_index);
+  static facebook::jsi::Value topOfStackToValue(duk_context *ctx);
+  static duk_ret_t dukProxyFunction(duk_context *ctx);
+  void pushValueToStack(facebook::jsi::Value &v);
+
+  struct DuktapeHostFunction {
+    DuktapeHostFunction(DuktapeRuntime *rt,
+                        facebook::jsi::HostFunctionType func)
+        : rt(rt), func(func){};
+    DuktapeRuntime *rt;
+    facebook::jsi::HostFunctionType func;
+  };
+
+  using HostFunctionMapType =
+      std::map<int, std::shared_ptr<DuktapeRuntime::DuktapeHostFunction>>;
+  static HostFunctionMapType *host_functions;
 
   class DuktapeHostObject : facebook::jsi::HostObject {
   public:
@@ -288,7 +299,7 @@ private:
   using DuktapeString = DuktapePointer<facebook::jsi::String>;
   using DuktapePropNameID = DuktapePointer<facebook::jsi::PropNameID>;
 
-  void duk_push_jsi_value(duk_context *ctx, const facebook::jsi::Value &value) {
+  void dukPushJsiValue(duk_context *ctx, const facebook::jsi::Value &value) {
     if (value.isUndefined()) {
       duk_push_undefined(ctx);
     } else if (value.isNull()) {
@@ -298,24 +309,23 @@ private:
     } else if (value.isNumber()) {
       duk_push_number(ctx, value.getNumber());
     } else if (value.isString()) {
-      duk_push_jsi_ptr_value(ctx, value.getString(*this));
+      dukPushJsiPtrValue(ctx, value.getString(*this));
     } else if (value.isSymbol()) {
-      duk_push_jsi_ptr_value(ctx, value.getSymbol(*this));
+      dukPushJsiPtrValue(ctx, value.getSymbol(*this));
     } else if (value.isObject()) {
-      duk_push_jsi_ptr_value(ctx, value.getObject(*this));
+      dukPushJsiPtrValue(ctx, value.getObject(*this));
     } else {
       throw std::logic_error("unknown duk type");
     }
   }
 
-  template <typename T>
-  void duk_push_jsi_ptr_value(duk_context *ctx, T &&value) {
+  template <typename T> void dukPushJsiPtrValue(duk_context *ctx, T &&value) {
     duk_push_heapptr(ctx,
                      static_cast<DuktapePointer<T> &>(value).getDukHeapPtr());
   }
 
   template <typename T>
-  void duk_push_jsi_ptr_value(duk_context *ctx, const T &&value) {
+  void dukPushJsiPtrValue(duk_context *ctx, const T &&value) {
     duk_push_heapptr(
         ctx, static_cast<const DuktapePointer<T> &>(value).getDukHeapPtr());
   }
