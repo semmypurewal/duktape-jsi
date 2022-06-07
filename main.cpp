@@ -154,5 +154,18 @@ int main(int argc, char **argv) {
   arr_elt = arr.getProperty(*dt, "2");
   assert(arr_elt.isUndefined());
 
+  auto host_function = [](facebook::jsi::Runtime &,
+                          const facebook::jsi::Value &,
+                          const facebook::jsi::Value *,
+                          unsigned long) { return facebook::jsi::Value(); };
+
+  jsi::Function f = jsi::Function::createFromHostFunction(
+      *dt, jsi::PropNameID::forAscii(*dt, "js test", strlen("js test")), 0,
+      host_function);
+
+  assert(f.isHostFunction(*dt));
+  // need to figure out how to test this one
+  // assert(f.getHostFunction(*dt) == host_function);
+
   std::cout << "OK!" << std::endl;
 }

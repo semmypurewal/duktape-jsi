@@ -105,9 +105,7 @@ public:
   }
 
   facebook::jsi::HostFunctionType &
-  getHostFunction(const facebook::jsi::Function &) override {
-    throw std::logic_error("getHostFunction: unimplemented method");
-  }
+  getHostFunction(const facebook::jsi::Function &) override;
 
   facebook::jsi::Value
   getProperty(const facebook::jsi::Object &obj,
@@ -152,9 +150,7 @@ public:
     throw std::logic_error("isHostObject: unimplemented method");
   }
 
-  bool isHostFunction(const facebook::jsi::Function &) const override {
-    throw std::logic_error("isHostFunction: unimplemented method");
-  }
+  bool isHostFunction(const facebook::jsi::Function &func) const override;
 
   facebook::jsi::Array
   getPropertyNames(const facebook::jsi::Object &) override {
@@ -236,6 +232,7 @@ public:
 
 private:
   duk_context *ctx;
+  const static char *DUKTAPE_HOST_FUNCTION_ID_KEY;
   static unsigned int current_hf_id;
   static facebook::jsi::Value stackToValue(duk_context *ctx, int stack_index);
   static facebook::jsi::Value topOfStackToValue(duk_context *ctx);

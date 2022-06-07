@@ -6,6 +6,7 @@ using namespace facebook;
 
 unsigned int DuktapeRuntime::current_hf_id = 0;
 auto *DuktapeRuntime::host_functions = new HostFunctionMapType;
+auto *DuktapeRuntime::DUKTAPE_HOST_FUNCTION_ID_KEY = "___duk_host_function_id";
 
 DuktapeRuntime::DuktapeRuntime() { ctx = duk_create_heap_default(); }
 DuktapeRuntime::~DuktapeRuntime() {
@@ -93,6 +94,17 @@ std::string DuktapeRuntime::utf8(const facebook::jsi::String &str) {
   return std::string(duk_get_string(ctx, -1));
 }
 
+facebook::jsi::HostFunctionType &
+DuktapeRuntime::getHostFunction(const facebook::jsi::Function &func) {
+  duk_push_heapptr(ctx, DuktapeObject::get(func));
+  duk_push_string(ctx, DuktapeRuntime::DUKTAPE_HOST_FUNCTION_ID_KEY);
+  duk_get_prop(ctx, -2);
+  unsigned int id = duk_get_number(ctx, -1);
+  duk_pop_2(ctx);
+  auto host_func = host_functions->at(id);
+  return host_func->func;
+}
+
 facebook::jsi::Value
 DuktapeRuntime::getProperty(const facebook::jsi::Object &obj,
                             const facebook::jsi::String &name) {
@@ -130,6 +142,15 @@ bool DuktapeRuntime::isFunction(const facebook::jsi::Object &obj) const {
   return result;
 }
 
+bool DuktapeRuntime::isHostFunction(const facebook::jsi::Function &func) const {
+  duk_push_heapptr(ctx, DuktapeObject::get(func));
+  duk_push_string(ctx, DuktapeRuntime::DUKTAPE_HOST_FUNCTION_ID_KEY);
+  duk_get_prop(ctx, -2);
+  auto result = duk_is_number(ctx, -1);
+  duk_pop_2(ctx);
+  return result;
+}
+
 facebook::jsi::Function DuktapeRuntime::createFunctionFromHostFunction(
     const facebook::jsi::PropNameID &name, unsigned int paramCount,
     facebook::jsi::HostFunctionType func) {
@@ -138,7 +159,7 @@ facebook::jsi::Function DuktapeRuntime::createFunctionFromHostFunction(
   host_functions->emplace(id, hf);
 
   duk_push_c_function(ctx, DuktapeRuntime::dukProxyFunction, DUK_VARARGS);
-  duk_push_string(ctx, "__id");
+  duk_push_string(ctx, DuktapeRuntime::DUKTAPE_HOST_FUNCTION_ID_KEY);
   duk_push_number(ctx, id);
   duk_put_prop(ctx, -3);
 
@@ -188,7 +209,7 @@ duk_ret_t DuktapeRuntime::dukProxyFunction(duk_context *ctx) {
   }
 
   duk_push_current_function(ctx);
-  duk_push_string(ctx, "__id");
+  duk_push_string(ctx, DuktapeRuntime::DUKTAPE_HOST_FUNCTION_ID_KEY);
   duk_get_prop(ctx, -2);
   unsigned int id = duk_get_number(ctx, -1);
   duk_pop_2(ctx);
