@@ -287,6 +287,12 @@ private:
   public:
     DuktapePointer<T>(void *ptr) : T(new DuktapePointerValue(ptr)){};
     DuktapePointer<T>(T &&other) : T(std::move(other)){};
+
+    static void *get(T &obj) {
+      return static_cast<const DuktapePointer<T> &>(obj).getDukHeapPtr();
+    }
+
+  private:
     void *getDukHeapPtr() const {
       DuktapePointerValue *dtv = (DuktapePointerValue *)this->ptr_;
       void *duk_heap_ptr = dtv->duk_ptr_;
@@ -294,10 +300,10 @@ private:
     }
   };
 
-  using DuktapeObject = DuktapePointer<facebook::jsi::Object>;
-  using DuktapeSymbol = DuktapePointer<facebook::jsi::Symbol>;
-  using DuktapeString = DuktapePointer<facebook::jsi::String>;
-  using DuktapePropNameID = DuktapePointer<facebook::jsi::PropNameID>;
+  using DuktapeObject = DuktapePointer<const facebook::jsi::Object>;
+  using DuktapeSymbol = DuktapePointer<const facebook::jsi::Symbol>;
+  using DuktapeString = DuktapePointer<const facebook::jsi::String>;
+  using DuktapePropNameID = DuktapePointer<const facebook::jsi::PropNameID>;
 
   void dukPushJsiValue(duk_context *ctx, const facebook::jsi::Value &value) {
     if (value.isUndefined()) {
@@ -320,13 +326,6 @@ private:
   }
 
   template <typename T> void dukPushJsiPtrValue(duk_context *ctx, T &&value) {
-    duk_push_heapptr(ctx,
-                     static_cast<DuktapePointer<T> &>(value).getDukHeapPtr());
-  }
-
-  template <typename T>
-  void dukPushJsiPtrValue(duk_context *ctx, const T &&value) {
-    duk_push_heapptr(
-        ctx, static_cast<const DuktapePointer<T> &>(value).getDukHeapPtr());
+    duk_push_heapptr(ctx, DuktapePointer<T>::get(value));
   }
 };

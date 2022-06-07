@@ -89,16 +89,14 @@ facebook::jsi::Object DuktapeRuntime::createObject() {
 }
 
 std::string DuktapeRuntime::utf8(const facebook::jsi::String &str) {
-  duk_push_heapptr(ctx,
-                   static_cast<const DuktapeString &>(str).getDukHeapPtr());
+  duk_push_heapptr(ctx, DuktapeString::get(str));
   return std::string(duk_get_string(ctx, -1));
 }
 
 facebook::jsi::Value
 DuktapeRuntime::getProperty(const facebook::jsi::Object &obj,
                             const facebook::jsi::String &name) {
-  duk_push_heapptr(ctx,
-                   static_cast<const DuktapeObject &>(obj).getDukHeapPtr());
+  duk_push_heapptr(ctx, DuktapeObject::get(obj));
   assert(duk_is_object(ctx, -1));
   auto obj_index = duk_normalize_index(ctx, -1);
   duk_push_string(ctx, name.utf8(*this).c_str());
@@ -125,8 +123,7 @@ void DuktapeRuntime::setPropertyValue(facebook::jsi::Object &obj,
 }
 
 bool DuktapeRuntime::isFunction(const facebook::jsi::Object &obj) const {
-  duk_push_heapptr(ctx,
-                   static_cast<const DuktapeObject &>(obj).getDukHeapPtr());
+  duk_push_heapptr(ctx, DuktapeObject::get(obj));
   assert(duk_is_object(ctx, -1));
   auto result = duk_is_function(ctx, -1);
   duk_pop(ctx);
