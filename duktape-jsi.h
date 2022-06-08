@@ -136,8 +136,9 @@ public:
                         const facebook::jsi::String &key,
                         const facebook::jsi::Value &value) override;
 
-  bool isArray(const facebook::jsi::Object &) const override {
-    throw std::logic_error("isArray: unimplemented method");
+  bool isArray(const facebook::jsi::Object &obj) const override {
+    duk_push_heapptr(ctx, DuktapeObject::get(obj));
+    return duk_is_array(ctx, -1);
   }
 
   bool isArrayBuffer(const facebook::jsi::Object &) const override {
@@ -182,15 +183,11 @@ public:
     throw std::logic_error("data: unimplemented method");
   }
 
-  facebook::jsi::Value getValueAtIndex(const facebook::jsi::Array &,
-                                       size_t i) override {
-    throw std::logic_error("getValueAtIndex: unimplemented method");
-  }
+  facebook::jsi::Value getValueAtIndex(const facebook::jsi::Array &ary,
+                                       size_t i) override;
 
-  void setValueAtIndexImpl(facebook::jsi::Array &, size_t i,
-                           const facebook::jsi::Value &value) override {
-    throw std::logic_error("setValueAtIndexImpl: unimplemented method");
-  }
+  void setValueAtIndexImpl(facebook::jsi::Array &ary, size_t i,
+                           const facebook::jsi::Value &value) override;
 
   facebook::jsi::Function
   createFunctionFromHostFunction(const facebook::jsi::PropNameID &,
@@ -237,7 +234,7 @@ private:
   static facebook::jsi::Value stackToValue(duk_context *ctx, int stack_index);
   static facebook::jsi::Value topOfStackToValue(duk_context *ctx);
   static duk_ret_t dukProxyFunction(duk_context *ctx);
-  void pushValueToStack(facebook::jsi::Value &v);
+  void pushValueToStack(const facebook::jsi::Value &v);
 
   struct DuktapeHostFunction {
     DuktapeHostFunction(DuktapeRuntime *rt,

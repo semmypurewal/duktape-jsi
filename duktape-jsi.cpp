@@ -60,22 +60,7 @@ DuktapeRuntime::cloneString(const facebook::jsi::Runtime::PointerValue *pv) {
 facebook::jsi::Runtime::PointerValue *
 DuktapeRuntime::cloneObject(const facebook::jsi::Runtime::PointerValue *pv) {
   duk_push_heapptr(ctx, ((DuktapePointerValue *)pv)->duk_ptr_);
-  int original_index = duk_normalize_index(ctx, -1);
-
-  if (!duk_is_function(ctx, original_index)) {
-    /* shallow clone for now, maybe that's okay? */
-    duk_push_object(ctx);
-    int clone_index = duk_normalize_index(ctx, -1);
-
-    duk_enum(ctx, original_index, 0);
-    while (duk_next(ctx, -1, 1)) {
-      duk_put_prop(ctx, clone_index);
-    }
-    return new DuktapePointerValue(duk_get_heapptr(ctx, clone_index));
-  } else {
-    /* not a clone, but whatever? */
-    return new DuktapePointerValue(duk_get_heapptr(ctx, original_index));
-  }
+  return new DuktapePointerValue(duk_get_heapptr(ctx, -1));
 }
 
 facebook::jsi::String DuktapeRuntime::createStringFromAscii(const char *str,
@@ -151,6 +136,32 @@ bool DuktapeRuntime::isHostFunction(const facebook::jsi::Function &func) const {
   return result;
 }
 
+facebook::jsi::Value
+DuktapeRuntime::getValueAtIndex(const facebook::jsi::Array &ary, size_t i) {
+  duk_push_heapptr(ctx, DuktapeObject::get(ary));
+  duk_push_number(ctx, i);
+  duk_get_prop(ctx, -2);
+  auto result = this->topOfStackToValue(ctx);
+  duk_pop_2(ctx);
+  return result;
+}
+
+void DuktapeRuntime::setValueAtIndexImpl(facebook::jsi::Array &ary, size_t i,
+                                         const facebook::jsi::Value &value) {
+  dukPushJsiPtrValue(ctx, std::move(ary));
+  int obj_index = duk_normalize_index(ctx, -1);
+  assert(duk_is_object(ctx, obj_index));
+  assert(duk_is_array(ctx, obj_index));
+  duk_push_number(ctx, i);
+  assert(duk_is_number(ctx, -1));
+  int key_index = duk_normalize_index(ctx, -1);
+  dukPushJsiValue(ctx, value);
+  int value_index = duk_normalize_index(ctx, -1);
+  duk_pull(ctx, key_index);
+  duk_pull(ctx, value_index - 1);
+  duk_put_prop(ctx, obj_index);
+}
+
 facebook::jsi::Function DuktapeRuntime::createFunctionFromHostFunction(
     const facebook::jsi::PropNameID &name, unsigned int paramCount,
     facebook::jsi::HostFunctionType func) {
@@ -221,6 +232,6 @@ duk_ret_t DuktapeRuntime::dukProxyFunction(duk_context *ctx) {
   return 1;
 }
 
-void DuktapeRuntime::pushValueToStack(facebook::jsi::Value &v) {
+void DuktapeRuntime::pushValueToStack(const facebook::jsi::Value &v) {
   dukPushJsiValue(ctx, v);
 }

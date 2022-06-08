@@ -26,6 +26,7 @@ int main(int argc, char **argv) {
   std::shared_ptr<jsi::Runtime> dt = std::make_shared<DuktapeRuntime>();
   jsi::Value v;
 
+  // BASIC EVAL AND VALUE TYPES //
   v = evaluateScript(*dt, "const temp = 5+2+20.5; temp;");
   assert(v.getNumber() == 27.5);
 
@@ -35,6 +36,7 @@ int main(int argc, char **argv) {
   v = evaluateScript(*dt, "'hello from JavaScript!';");
   assert(v.getString(*dt).utf8(*dt) == std::string("hello from JavaScript!"));
 
+  // OBJECTS //
   v = evaluateScript(
       *dt, "const temp = {test:'hello', test2: 42, bool_test:false}; temp;");
   auto obj = v.getObject(*dt);
@@ -49,18 +51,26 @@ int main(int argc, char **argv) {
   assert(obj.getProperty(*dt, "KEY").getString(*dt).utf8(*dt) == "VALUE");
   assert(obj.getProperty(*dt, "bool_test").getBool() == true);
 
+  // ARRAYS //
   v = evaluateScript(*dt, "var ary = ['a','b','c']; ary;");
-  auto ary = v.getObject(*dt);
-  assert(ary.getProperty(*dt, "1").getString(*dt).utf8(*dt) == "b");
-  assert(ary.getProperty(*dt, "2").getString(*dt).utf8(*dt) == "c");
-  assert(ary.getProperty(*dt, "3").isUndefined());
+  assert(v.isObject());
+  auto ary = v.getObject(*dt).getArray(*dt);
+  assert(ary.getValueAtIndex(*dt, 1).getString(*dt).utf8(*dt) == "b");
+  assert(ary.getValueAtIndex(*dt, 2).getString(*dt).utf8(*dt) == "c");
+  assert(ary.getValueAtIndex(*dt, 3).isUndefined());
+  ary.setValueAtIndex(*dt, 3, "d");
+  assert(ary.getValueAtIndex(*dt, 3).getString(*dt).utf8(*dt) == "d");
+  ary.setValueAtIndex(*dt, 2, "e");
+  assert(ary.getValueAtIndex(*dt, 2).getString(*dt).utf8(*dt) == "e");
 
+  // GLOBAL OBJECT //
   auto global = dt->global();
   global.setProperty(*dt, "dukMsg", "hello from C++!");
   v = evaluateScript(*dt, "dukMsg;");
   assert(v.isString());
   assert(v.getString(*dt).utf8(*dt) == "hello from C++!");
 
+  // HOST FUNCTIONS //
   int capture = 4;
   jsi::HostFunctionType func_with_captures =
       [&](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
