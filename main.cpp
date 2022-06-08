@@ -41,11 +41,12 @@ int main(int argc, char **argv) {
       *dt, "const temp = {test:'hello', test2: 42, bool_test:false}; temp;");
   auto obj = v.getObject(*dt);
   assert(obj.getProperty(*dt, "test").getString(*dt).utf8(*dt) == "hello");
-  assert(obj.getProperty(*dt, "test2").getNumber() == 42);
+  assert(obj.getProperty(*dt, jsi::PropNameID::forAscii(*dt, "test2"))
+             .getNumber() == 42);
   assert(obj.getProperty(*dt, "bool_test").getBool() == false);
 
   obj.setProperty(*dt, "num_test", 24);
-  obj.setProperty(*dt, "KEY", "VALUE");
+  obj.setProperty(*dt, jsi::PropNameID::forAscii(*dt, "KEY"), "VALUE");
   obj.setProperty(*dt, "bool_test", true);
   assert(obj.getProperty(*dt, "num_test").getNumber() == 24);
   assert(obj.getProperty(*dt, "KEY").getString(*dt).utf8(*dt) == "VALUE");

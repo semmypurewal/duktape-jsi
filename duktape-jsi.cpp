@@ -92,6 +92,19 @@ DuktapeRuntime::getHostFunction(const facebook::jsi::Function &func) {
 
 facebook::jsi::Value
 DuktapeRuntime::getProperty(const facebook::jsi::Object &obj,
+                            const facebook::jsi::PropNameID &name) {
+  duk_push_heapptr(ctx, DuktapeObject::get(obj));
+  assert(duk_is_object(ctx, -1));
+  auto obj_index = duk_normalize_index(ctx, -1);
+  duk_push_heapptr(ctx, DuktapePropNameID::get(name));
+  assert(duk_is_object(ctx, obj_index));
+  assert(duk_is_string(ctx, -1));
+  duk_get_prop(ctx, obj_index);
+  return topOfStackToValue(ctx);
+}
+
+facebook::jsi::Value
+DuktapeRuntime::getProperty(const facebook::jsi::Object &obj,
                             const facebook::jsi::String &name) {
   duk_push_heapptr(ctx, DuktapeObject::get(obj));
   assert(duk_is_object(ctx, -1));
@@ -101,6 +114,22 @@ DuktapeRuntime::getProperty(const facebook::jsi::Object &obj,
   assert(duk_is_string(ctx, -1));
   duk_get_prop(ctx, obj_index);
   return topOfStackToValue(ctx);
+}
+
+void DuktapeRuntime::setPropertyValue(facebook::jsi::Object &obj,
+                                      const facebook::jsi::PropNameID &name,
+                                      const facebook::jsi::Value &value) {
+  dukPushJsiPtrValue(ctx, std::move(obj));
+  int obj_index = duk_normalize_index(ctx, -1);
+  assert(duk_is_object(ctx, obj_index));
+  duk_push_heapptr(ctx, DuktapePropNameID::get(name));
+  assert(duk_is_string(ctx, -1));
+  int key_index = duk_normalize_index(ctx, -1);
+  dukPushJsiValue(ctx, value);
+  int value_index = duk_normalize_index(ctx, -1);
+  duk_pull(ctx, key_index);
+  duk_pull(ctx, value_index - 1);
+  duk_put_prop(ctx, obj_index);
 }
 
 void DuktapeRuntime::setPropertyValue(facebook::jsi::Object &obj,

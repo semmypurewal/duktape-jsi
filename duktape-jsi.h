@@ -109,9 +109,7 @@ public:
 
   facebook::jsi::Value
   getProperty(const facebook::jsi::Object &obj,
-              const facebook::jsi::PropNameID &name) override {
-    throw std::logic_error("getProperty: unimplemented method");
-  }
+              const facebook::jsi::PropNameID &name) override;
 
   facebook::jsi::Value getProperty(const facebook::jsi::Object &,
                                    const facebook::jsi::String &) override;
@@ -126,11 +124,9 @@ public:
     throw std::logic_error("hasProperty: unimplemented method");
   }
 
-  void setPropertyValue(facebook::jsi::Object &,
+  void setPropertyValue(facebook::jsi::Object &obj,
                         const facebook::jsi::PropNameID &name,
-                        const facebook::jsi::Value &value) override {
-    throw std::logic_error("setPropertyValue: unimplemented method");
-  }
+                        const facebook::jsi::Value &value) override;
 
   void setPropertyValue(facebook::jsi::Object &obj,
                         const facebook::jsi::String &key,
