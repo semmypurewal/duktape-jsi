@@ -3,10 +3,13 @@ CC=clang
 CFLAGS=-Wall -Werror -pedantic
 JSI_DIR=./jsi
 DUKTAPE_DIR=./duktape-2.7.0
+GTEST_DIR=./googletest
 BUILDS=./builds
 
+all: $(BUILDS)/main $(BUILDS)/test
+
 $(BUILDS)/main: main.cpp $(BUILDS)/jsi.o $(BUILDS)/duktape.o $(BUILDS)/duktape-jsi.o
-	$(CPP) $(CFLAGS) -o $(BUILDS)/main main.cpp $(BUILDS)/jsi.o $(BUILDS)/duktape.o $(BUILDS)/duktape-jsi.o -I.
+	$(CPP) $(CFLAGS) -o $(BUILDS)/main $^ -I.
 
 $(BUILDS)/duktape-jsi.o: duktape-jsi.h duktape-jsi.cpp
 	$(CPP) $(CFLAGS) -o $(BUILDS)/duktape-jsi.o -c duktape-jsi.cpp -I.
@@ -16,6 +19,12 @@ $(BUILDS)/jsi.o: $(JSI_DIR)/* | $(BUILDS)
 
 $(BUILDS)/duktape.o: $(DUKTAPE_DIR)/* | $(BUILDS)
 	$(CC) $(CFLAGS) -o $(BUILDS)/duktape.o -c $(DUKTAPE_DIR)/src/duktape.c
+
+$(BUILDS)/gtest-all.o: $(GTEST_DIR)/src/* | $(BUILDS)
+	$(CPP) $(CFLAGS) -o $@ -c $(GTEST_DIR)/src/gtest-all.cc -I$(GTEST_DIR)/include -I$(GTEST_DIR)
+
+$(BUILDS)/test: test.cpp $(BUILDS)/gtest-all.o $(BUILDS)/duktape-jsi.o $(BUILDS)/jsi.o $(BUILDS)/duktape.o
+	$(CPP) $(CFLAGS) -Igoogletest/include -I. $^ -o $(BUILDS)/test -lpthread
 
 $(BUILDS):
 	mkdir -p $(BUILDS)
