@@ -81,6 +81,12 @@ facebook::jsi::String DuktapeRuntime::createStringFromAscii(const char *str,
   return DuktapeString(duk_get_heapptr(ctx, -1));
 }
 
+facebook::jsi::String DuktapeRuntime::createStringFromUtf8(const uint8_t *utf8,
+                                                           size_t length) {
+  duk_push_string(ctx, (char *)utf8);
+  return DuktapeString(duk_get_heapptr(ctx, -1));
+}
+
 facebook::jsi::Object DuktapeRuntime::createObject() {
   duk_push_object(ctx);
   return DuktapeObject(duk_get_heapptr(ctx, -1));
@@ -158,6 +164,11 @@ void DuktapeRuntime::setPropertyValue(facebook::jsi::Object &obj,
   duk_pull(ctx, key_index);
   duk_pull(ctx, value_index - 1);
   duk_put_prop(ctx, obj_index);
+}
+
+bool DuktapeRuntime::isArray(const facebook::jsi::Object &obj) const {
+  duk_push_heapptr(ctx, DuktapeObject::get(obj));
+  return duk_is_array(ctx, -1);
 }
 
 bool DuktapeRuntime::isFunction(const facebook::jsi::Object &obj) const {

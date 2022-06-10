@@ -82,10 +82,7 @@ public:
                                               size_t length) override;
 
   facebook::jsi::String createStringFromUtf8(const uint8_t *utf8,
-                                             size_t length) override {
-    duk_push_string(ctx, (char *)utf8);
-    return DuktapeString(duk_get_heapptr(ctx, -1));
-  }
+                                             size_t length) override;
 
   std::string utf8(const facebook::jsi::String &str) override;
 
@@ -129,10 +126,7 @@ public:
                         const facebook::jsi::String &key,
                         const facebook::jsi::Value &value) override;
 
-  bool isArray(const facebook::jsi::Object &obj) const override {
-    duk_push_heapptr(ctx, DuktapeObject::get(obj));
-    return duk_is_array(ctx, -1);
-  }
+  bool isArray(const facebook::jsi::Object &obj) const override;
 
   bool isArrayBuffer(const facebook::jsi::Object &) const override {
     throw std::logic_error("isArrayBuffer: unimplemented method");
