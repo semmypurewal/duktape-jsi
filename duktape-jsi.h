@@ -40,9 +40,7 @@ public:
   }
 
   facebook::jsi::Runtime::PointerValue *
-  cloneSymbol(const facebook::jsi::Runtime::PointerValue *pv) override {
-    throw std::logic_error("cloneSymbol: unimplemented method");
-  }
+  cloneSymbol(const facebook::jsi::Runtime::PointerValue *pv) override;
 
   facebook::jsi::Runtime::PointerValue *
   cloneString(const facebook::jsi::Runtime::PointerValue *pv) override;
@@ -51,9 +49,7 @@ public:
   cloneObject(const facebook::jsi::Runtime::PointerValue *pv) override;
 
   facebook::jsi::Runtime::PointerValue *
-  clonePropNameID(const facebook::jsi::Runtime::PointerValue *pv) override {
-    throw std::logic_error("clonePropNameID: unimplemented method");
-  }
+  clonePropNameID(const facebook::jsi::Runtime::PointerValue *pv) override;
 
   facebook::jsi::PropNameID createPropNameIDFromAscii(const char *str,
                                                       size_t l) override;
@@ -87,7 +83,8 @@ public:
 
   facebook::jsi::String createStringFromUtf8(const uint8_t *utf8,
                                              size_t length) override {
-    throw std::logic_error("createStringFromUtf8: unimplemented method");
+    duk_push_string(ctx, (char *)utf8);
+    return DuktapeString(duk_get_heapptr(ctx, -1));
   }
 
   std::string utf8(const facebook::jsi::String &str) override;
@@ -191,11 +188,8 @@ public:
                                  facebook::jsi::HostFunctionType) override;
 
   facebook::jsi::Value call(const facebook::jsi::Function &,
-                            const facebook::jsi::Value &jsThis,
-                            const facebook::jsi::Value *args,
-                            size_t count) override {
-    throw std::logic_error("call: unimplemented method");
-  }
+                            const facebook::jsi::Value &,
+                            const facebook::jsi::Value *, size_t) override;
 
   facebook::jsi::Value callAsConstructor(const facebook::jsi::Function &,
                                          const facebook::jsi::Value *args,
@@ -267,6 +261,11 @@ private:
         : duk_ptr_(ptr){
               // hide this object from garbage collection
           };
+    static facebook::jsi::Runtime::PointerValue *
+    clone(const facebook::jsi::Runtime::PointerValue *pv) {
+      return new DuktapePointerValue(
+          static_cast<const DuktapePointerValue *>(pv)->duk_ptr_);
+    }
     void invalidate() override{
         // release this object for garbage collection
     };
@@ -293,6 +292,7 @@ private:
   using DuktapeObject = DuktapePointer<const facebook::jsi::Object>;
   using DuktapeSymbol = DuktapePointer<const facebook::jsi::Symbol>;
   using DuktapeString = DuktapePointer<const facebook::jsi::String>;
+  using DuktapeFunction = DuktapePointer<const facebook::jsi::Function>;
   using DuktapePropNameID = DuktapePointer<const facebook::jsi::PropNameID>;
 
   void dukPushJsiValue(duk_context *ctx, const facebook::jsi::Value &value) {

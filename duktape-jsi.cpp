@@ -29,8 +29,15 @@ DuktapeRuntime::~DuktapeRuntime() {
 facebook::jsi::Value DuktapeRuntime::evaluateJavaScript(
     const std::shared_ptr<const facebook::jsi::Buffer> &buffer,
     const std::string &sourceUrl) {
-  duk_eval_string(ctx, reinterpret_cast<const char *>(buffer->data()));
-  return this->topOfStackToValue(ctx);
+  auto err =
+      duk_peval_string(ctx, reinterpret_cast<const char *>(buffer->data()));
+
+  if (err) {
+    auto err_message = duk_safe_to_string(ctx, -1);
+    throw facebook::jsi::JSError(*this, err_message);
+  } else {
+    return this->topOfStackToValue(ctx);
+  }
 }
 
 std::string DuktapeRuntime::description() { return "Duktape 2.7 Runtime"; }
@@ -49,18 +56,23 @@ DuktapeRuntime::createPropNameIDFromAscii(const char *str, size_t length) {
 }
 
 facebook::jsi::Runtime::PointerValue *
+DuktapeRuntime::cloneSymbol(const facebook::jsi::Runtime::PointerValue *pv) {
+  return DuktapePointerValue::clone(pv);
+}
+
+facebook::jsi::Runtime::PointerValue *
 DuktapeRuntime::cloneString(const facebook::jsi::Runtime::PointerValue *pv) {
-  duk_push_heapptr(ctx, ((DuktapePointerValue *)pv)->duk_ptr_);
-  duk_push_string(ctx, duk_get_string(ctx, -1));
-  void *temp = duk_get_heapptr(ctx, -1);
-  DuktapePointerValue *result = new DuktapePointerValue(temp);
-  return result;
+  return DuktapePointerValue::clone(pv);
 }
 
 facebook::jsi::Runtime::PointerValue *
 DuktapeRuntime::cloneObject(const facebook::jsi::Runtime::PointerValue *pv) {
-  duk_push_heapptr(ctx, ((DuktapePointerValue *)pv)->duk_ptr_);
-  return new DuktapePointerValue(duk_get_heapptr(ctx, -1));
+  return DuktapePointerValue::clone(pv);
+}
+
+facebook::jsi::Runtime::PointerValue *DuktapeRuntime::clonePropNameID(
+    const facebook::jsi::Runtime::PointerValue *pv) {
+  return DuktapePointerValue::clone(pv);
 }
 
 facebook::jsi::String DuktapeRuntime::createStringFromAscii(const char *str,
@@ -208,6 +220,22 @@ facebook::jsi::Function DuktapeRuntime::createFunctionFromHostFunction(
   assert(duk_is_function(ctx, -1));
 
   return DuktapeObject(temp).asFunction(*this);
+}
+
+facebook::jsi::Value DuktapeRuntime::call(const facebook::jsi::Function &func,
+                                          const facebook::jsi::Value &jsThis,
+                                          const facebook::jsi::Value *args,
+                                          size_t count) {
+  dukPushJsiPtrValue(ctx, std::move(func));
+  dukPushJsiValue(ctx, std::move(jsThis));
+  for (int i = 0; i < count; ++i) {
+    dukPushJsiValue(ctx, args[i]);
+  }
+  auto err = duk_pcall_method(ctx, count);
+  if (err) {
+    throw facebook::jsi::JSError(*this, duk_safe_to_string(ctx, -1));
+  }
+  return topOfStackToValue(ctx);
 }
 
 facebook::jsi::Value DuktapeRuntime::topOfStackToValue(duk_context *ctx) {

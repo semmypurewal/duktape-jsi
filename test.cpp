@@ -43,6 +43,10 @@ TEST_F(DuktapeRuntimeTest, MaintainStateBetweenEvaluateCalls) {
   EXPECT_EQ(v.getNumber(), 77.5);
 }
 
+TEST_F(DuktapeRuntimeTest, SyntaxError) {
+  EXPECT_THROW(evaluateScript("syntax error="), facebook::jsi::JSError);
+}
+
 TEST_F(DuktapeRuntimeTest, StringValueReturn) {
   auto v = evaluateScript("'hello from JavaScript!';");
   EXPECT_EQ(v.getString(*dt).utf8(*dt), std::string("hello from JavaScript!"));
