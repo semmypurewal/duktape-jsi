@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
       [](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
          size_t count) {
         bool result = false;
-        for (int i = 0; i < count; ++i) {
+        for (unsigned int i = 0; i < count; ++i) {
           assert(args[i].isBool());
           if (args[i].getBool() == true) {
             result = true;
@@ -136,7 +136,7 @@ int main(int argc, char **argv) {
         assert(args[0].isString());
         assert(args[1].isNumber());
         auto str = args[0].getString(rt).utf8(rt);
-        int index = args[1].getNumber();
+        unsigned int index = args[1].getNumber();
 
         if (0 <= index && index < str.length()) {
           const auto result = std::string(1, str.at(index));

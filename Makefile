@@ -8,10 +8,16 @@ BUILDS=./builds
 
 all: $(BUILDS)/main $(BUILDS)/test
 
-$(BUILDS)/main: main.cpp $(BUILDS)/jsi.o $(BUILDS)/duktape.o $(BUILDS)/duktape-jsi.o
+$(BUILDS)/main: main.cpp $(BUILDS)/duktape-jsi.a
 	$(CPP) $(CFLAGS) -o $(BUILDS)/main $^ -I.
 
-$(BUILDS)/duktape-jsi.o: duktape-jsi.h duktape-jsi.cpp
+$(BUILDS)/test: test.cpp $(BUILDS)/gtest-all.o $(BUILDS)/duktape-jsi.a
+	$(CPP) $(CFLAGS) -Igoogletest/include -I. $^ -o $(BUILDS)/test -lpthread
+
+$(BUILDS)/duktape-jsi.a: $(BUILDS)/jsi.o $(BUILDS)/duktape.o $(BUILDS)/duktape-jsi.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILDS)/duktape-jsi.o: duktape-jsi.h duktape-jsi.cpp | $(BUILDS)
 	$(CPP) $(CFLAGS) -o $(BUILDS)/duktape-jsi.o -c duktape-jsi.cpp -I.
 
 $(BUILDS)/jsi.o: $(JSI_DIR)/* | $(BUILDS)
@@ -22,9 +28,6 @@ $(BUILDS)/duktape.o: $(DUKTAPE_DIR)/* | $(BUILDS)
 
 $(BUILDS)/gtest-all.o: $(GTEST_DIR)/src/* | $(BUILDS)
 	$(CPP) $(CFLAGS) -o $@ -c $(GTEST_DIR)/src/gtest-all.cc -I$(GTEST_DIR)/include -I$(GTEST_DIR)
-
-$(BUILDS)/test: test.cpp $(BUILDS)/gtest-all.o $(BUILDS)/duktape-jsi.o $(BUILDS)/jsi.o $(BUILDS)/duktape.o
-	$(CPP) $(CFLAGS) -Igoogletest/include -I. $^ -o $(BUILDS)/test -lpthread
 
 $(BUILDS):
 	mkdir -p $(BUILDS)

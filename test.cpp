@@ -57,7 +57,7 @@ TEST_F(DuktapeRuntimeTest, ObjectValueReturn) {
       "const temp = {test:'hello', test2: 42, bool_test:false}; temp;");
   auto obj = v.getObject(*dt);
   ASSERT_TRUE(obj.getPropertyNames(*dt).isArray(*dt));
-  EXPECT_EQ(obj.getPropertyNames(*dt).length(*dt), 3);
+  EXPECT_EQ(obj.getPropertyNames(*dt).length(*dt), 3u);
   EXPECT_EQ(obj.getProperty(*dt, "test").getString(*dt).utf8(*dt), "hello");
   EXPECT_EQ(
       obj.getProperty(*dt, facebook::jsi::PropNameID::forAscii(*dt, "test2"))
@@ -66,10 +66,10 @@ TEST_F(DuktapeRuntimeTest, ObjectValueReturn) {
   EXPECT_EQ(obj.getProperty(*dt, "bool_test").getBool(), false);
 
   obj.setProperty(*dt, "num_test", 24);
-  EXPECT_EQ(obj.getPropertyNames(*dt).length(*dt), 4);
+  EXPECT_EQ(obj.getPropertyNames(*dt).length(*dt), 4u);
   obj.setProperty(*dt, facebook::jsi::PropNameID::forAscii(*dt, "KEY"),
                   "VALUE");
-  EXPECT_EQ(obj.getPropertyNames(*dt).length(*dt), 5);
+  EXPECT_EQ(obj.getPropertyNames(*dt).length(*dt), 5u);
   obj.setProperty(*dt, "bool_test", true);
   EXPECT_TRUE(obj.hasProperty(*dt, "num_test"));
   EXPECT_TRUE(
@@ -94,13 +94,13 @@ TEST_F(DuktapeRuntimeTest, ArrayValueReturn) {
 
 TEST_F(DuktapeRuntimeTest, CreateObjectAndArray) {
   auto arr = facebook::jsi::Array(*dt, 5);
-  EXPECT_EQ(arr.length(*dt), 5);
-  for (int i = 0; i < arr.length(*dt); i++) {
+  EXPECT_EQ(arr.length(*dt), 5u);
+  for (unsigned int i = 0; i < arr.length(*dt); i++) {
     EXPECT_TRUE(arr.getValueAtIndex(*dt, i).isUndefined());
   }
 
   auto obj = facebook::jsi::Object(*dt);
-  EXPECT_EQ(obj.getPropertyNames(*dt).length(*dt), 0);
+  EXPECT_EQ(obj.getPropertyNames(*dt).length(*dt), 0u);
 }
 
 TEST_F(DuktapeRuntimeTest, GlobalObject) {
@@ -147,7 +147,7 @@ TEST_F(DuktapeRuntimeTest, HostFunctionWithBooleanVarArgs) {
       [](facebook::jsi::Runtime &rt, const facebook::jsi::Value &thisVal,
          const facebook::jsi::Value *args, size_t count) {
         bool result = false;
-        for (int i = 0; i < count; ++i) {
+        for (unsigned int i = 0; i < count; ++i) {
           assert(args[i].isBool());
           if (args[i].getBool() == true) {
             result = true;
@@ -189,7 +189,7 @@ TEST_F(DuktapeRuntimeTest, HostFunctionWithHeterogeneousArgs) {
         assert(args[0].isString());
         assert(args[1].isNumber());
         auto str = args[0].getString(rt).utf8(rt);
-        int index = args[1].getNumber();
+        unsigned int index = args[1].getNumber();
 
         if (0 <= index && index < str.length()) {
           const auto result = std::string(1, str.at(index));

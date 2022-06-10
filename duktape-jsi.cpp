@@ -5,8 +5,10 @@
 using namespace facebook;
 
 unsigned int DuktapeRuntime::current_hf_id = 0;
-auto *DuktapeRuntime::host_functions = new HostFunctionMapType;
-auto *DuktapeRuntime::DUKTAPE_HOST_FUNCTION_ID_KEY = "___duk_host_function_id";
+DuktapeRuntime::HostFunctionMapType *DuktapeRuntime::host_functions =
+    new HostFunctionMapType;
+const char *DuktapeRuntime::DUKTAPE_HOST_FUNCTION_ID_KEY =
+    "___duk_host_function_id";
 
 DuktapeRuntime::DuktapeRuntime() { ctx = duk_create_heap_default(); }
 DuktapeRuntime::~DuktapeRuntime() {
@@ -234,7 +236,7 @@ DuktapeRuntime::getPropertyNames(const facebook::jsi::Object &obj) {
 facebook::jsi::Array DuktapeRuntime::createArray(size_t length) {
   duk_push_array(ctx);
   auto arr_index = duk_normalize_index(ctx, -1);
-  for (int i = 0; i < length; i++) {
+  for (size_t i = 0; i < length; i++) {
     duk_push_undefined(ctx);
     duk_put_prop_index(ctx, arr_index, i);
   }
@@ -299,7 +301,7 @@ facebook::jsi::Value DuktapeRuntime::call(const facebook::jsi::Function &func,
                                           size_t count) {
   dukPushJsiPtrValue(ctx, std::move(func));
   dukPushJsiValue(ctx, std::move(jsThis));
-  for (int i = 0; i < count; ++i) {
+  for (unsigned int i = 0; i < count; ++i) {
     dukPushJsiValue(ctx, args[i]);
   }
   auto err = duk_pcall_method(ctx, count);
