@@ -56,6 +56,8 @@ TEST_F(DuktapeRuntimeTest, ObjectValueReturn) {
   auto v = evaluateScript(
       "const temp = {test:'hello', test2: 42, bool_test:false}; temp;");
   auto obj = v.getObject(*dt);
+  ASSERT_TRUE(obj.getPropertyNames(*dt).isArray(*dt));
+  EXPECT_EQ(obj.getPropertyNames(*dt).length(*dt), 3);
   EXPECT_EQ(obj.getProperty(*dt, "test").getString(*dt).utf8(*dt), "hello");
   EXPECT_EQ(
       obj.getProperty(*dt, facebook::jsi::PropNameID::forAscii(*dt, "test2"))
@@ -64,9 +66,14 @@ TEST_F(DuktapeRuntimeTest, ObjectValueReturn) {
   EXPECT_EQ(obj.getProperty(*dt, "bool_test").getBool(), false);
 
   obj.setProperty(*dt, "num_test", 24);
+  EXPECT_EQ(obj.getPropertyNames(*dt).length(*dt), 4);
   obj.setProperty(*dt, facebook::jsi::PropNameID::forAscii(*dt, "KEY"),
                   "VALUE");
+  EXPECT_EQ(obj.getPropertyNames(*dt).length(*dt), 5);
   obj.setProperty(*dt, "bool_test", true);
+  EXPECT_TRUE(obj.hasProperty(*dt, "num_test"));
+  EXPECT_TRUE(
+      obj.hasProperty(*dt, facebook::jsi::PropNameID::forAscii(*dt, "KEY")));
   EXPECT_EQ(obj.getProperty(*dt, "num_test").getNumber(), 24);
   EXPECT_EQ(obj.getProperty(*dt, "KEY").getString(*dt).utf8(*dt), "VALUE");
   EXPECT_EQ(obj.getProperty(*dt, "bool_test").getBool(), true);
@@ -83,6 +90,17 @@ TEST_F(DuktapeRuntimeTest, ArrayValueReturn) {
   EXPECT_EQ(ary.getValueAtIndex(*dt, 3).getString(*dt).utf8(*dt), "d");
   ary.setValueAtIndex(*dt, 2, "e");
   EXPECT_EQ(ary.getValueAtIndex(*dt, 2).getString(*dt).utf8(*dt), "e");
+}
+
+TEST_F(DuktapeRuntimeTest, CreateObjectAndArray) {
+  auto arr = facebook::jsi::Array(*dt, 5);
+  EXPECT_EQ(arr.length(*dt), 5);
+  for (int i = 0; i < arr.length(*dt); i++) {
+    EXPECT_TRUE(arr.getValueAtIndex(*dt, i).isUndefined());
+  }
+
+  auto obj = facebook::jsi::Object(*dt);
+  EXPECT_EQ(obj.getPropertyNames(*dt).length(*dt), 0);
 }
 
 TEST_F(DuktapeRuntimeTest, GlobalObject) {

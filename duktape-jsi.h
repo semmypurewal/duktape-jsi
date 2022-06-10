@@ -55,20 +55,18 @@ public:
                                                       size_t l) override;
 
   facebook::jsi::PropNameID createPropNameIDFromUtf8(const uint8_t *utf8,
-                                                     size_t length) override {
-    throw std::logic_error("createPropNameIDFromUtf8: unimplemented method");
-  }
+                                                     size_t length) override;
+
   facebook::jsi::PropNameID
-  createPropNameIDFromString(const facebook::jsi::String &str) override {
-    throw std::logic_error("createPropNameIDFromString: unimplemented method");
-  }
+  createPropNameIDFromString(const facebook::jsi::String &str) override;
+
   facebook::jsi::PropNameID
   createPropNameIDFromSymbol(const facebook::jsi::Symbol &sym) override {
     throw std::logic_error("createPropNameIDFromSymbol: unimplemented method");
   }
-  std::string utf8(const facebook::jsi::PropNameID &) override {
-    throw std::logic_error("utf8: unimplemented method");
-  }
+
+  std::string utf8(const facebook::jsi::PropNameID &) override;
+
   bool compare(const facebook::jsi::PropNameID &,
                const facebook::jsi::PropNameID &) override {
     throw std::logic_error("compare: unimplemented method");
@@ -109,14 +107,10 @@ public:
                                    const facebook::jsi::String &) override;
 
   bool hasProperty(const facebook::jsi::Object &,
-                   const facebook::jsi::PropNameID &name) override {
-    throw std::logic_error("hasProperty: unimplemented method");
-  }
+                   const facebook::jsi::PropNameID &name) override;
 
   bool hasProperty(const facebook::jsi::Object &,
-                   const facebook::jsi::String &name) override {
-    throw std::logic_error("hasProperty: unimplemented method");
-  }
+                   const facebook::jsi::String &name) override;
 
   void setPropertyValue(facebook::jsi::Object &obj,
                         const facebook::jsi::PropNameID &name,
@@ -140,10 +134,7 @@ public:
 
   bool isHostFunction(const facebook::jsi::Function &func) const override;
 
-  facebook::jsi::Array
-  getPropertyNames(const facebook::jsi::Object &) override {
-    throw std::logic_error("getPropertyNames: unimplemented method");
-  }
+  facebook::jsi::Array getPropertyNames(const facebook::jsi::Object &) override;
 
   facebook::jsi::WeakObject
   createWeakObject(const facebook::jsi::Object &) override {
@@ -154,13 +145,9 @@ public:
     throw std::logic_error("lockWeakObject: unimplemented method");
   }
 
-  facebook::jsi::Array createArray(size_t length) override {
-    throw std::logic_error("createArray: unimplemented method");
-  }
+  facebook::jsi::Array createArray(size_t length) override;
 
-  size_t size(const facebook::jsi::Array &) override {
-    throw std::logic_error("size: unimplemented method");
-  }
+  size_t size(const facebook::jsi::Array &) override;
 
   size_t size(const facebook::jsi::ArrayBuffer &) override {
     throw std::logic_error("size: unimplemented method");
