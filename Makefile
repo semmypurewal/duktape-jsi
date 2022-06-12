@@ -6,10 +6,7 @@ DUKTAPE_DIR=./duktape-2.7.0
 GTEST_DIR=./googletest
 BUILDS=./builds
 
-all: $(BUILDS)/main $(BUILDS)/test $(BUILDS)/jsi-test
-
-$(BUILDS)/main: main.cpp $(BUILDS)/duktape-jsi.a
-	$(CPP) $(CFLAGS) -o $(BUILDS)/main $^ -I.
+all: $(BUILDS)/test $(BUILDS)/jsi-test
 
 $(BUILDS)/jsi-test: jsi-test.cpp $(BUILDS)/jsi-test.o $(BUILDS)/gtest-all.o $(BUILDS)/duktape-jsi.a
 	$(CPP) $(CFLAGS) -Igoogletest/include -I. $^ -o $(BUILDS)/jsi-test -lpthread
