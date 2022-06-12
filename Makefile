@@ -6,13 +6,20 @@ DUKTAPE_DIR=./duktape-2.7.0
 GTEST_DIR=./googletest
 BUILDS=./builds
 
-all: $(BUILDS)/main $(BUILDS)/test
+all: $(BUILDS)/main $(BUILDS)/test $(BUILDS)/jsi-test
 
 $(BUILDS)/main: main.cpp $(BUILDS)/duktape-jsi.a
 	$(CPP) $(CFLAGS) -o $(BUILDS)/main $^ -I.
 
-$(BUILDS)/test: test.cpp $(BUILDS)/gtest-all.o $(BUILDS)/duktape-jsi.a
+$(BUILDS)/jsi-test: jsi-test.cpp $(BUILDS)/jsi-test.o $(BUILDS)/gtest-all.o $(BUILDS)/duktape-jsi.a
+	$(CPP) $(CFLAGS) -Igoogletest/include -I. $^ -o $(BUILDS)/jsi-test -lpthread
+
+$(BUILDS)/test: test.cpp  $(BUILDS)/gtest-all.o $(BUILDS)/duktape-jsi.a
 	$(CPP) $(CFLAGS) -Igoogletest/include -I. $^ -o $(BUILDS)/test -lpthread
+
+# testlib.cpp has some warnings that aren't suppressed by -isystem, so not enabling warnings
+$(BUILDS)/jsi-test.o: jsi/test/testlib.h jsi/test/testlib.cpp | $(BUILDS)
+	$(CPP) -isystem . -isystem $(GTEST_DIR)/include -c jsi/test/testlib.cpp -o $(BUILDS)/jsi-test.o
 
 $(BUILDS)/duktape-jsi.a: $(BUILDS)/jsi.o $(BUILDS)/duktape.o $(BUILDS)/duktape-jsi.o
 	$(AR) $(ARFLAGS) $@ $^

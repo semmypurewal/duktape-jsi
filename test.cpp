@@ -1,6 +1,5 @@
 #include "duktape-jsi.h"
 #include "gtest/gtest.h"
-#include <iostream>
 
 using ::testing::InitGoogleTest;
 using ::testing::Test;
