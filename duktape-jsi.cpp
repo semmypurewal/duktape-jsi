@@ -112,12 +112,12 @@ facebook::jsi::Object DuktapeRuntime::createObject() {
 
 std::string DuktapeRuntime::utf8(const facebook::jsi::String &str) {
   duk_push_heapptr(ctx, DuktapeString::get(str));
-  return std::string(duk_get_string(ctx, -1));
+  return dukCopyStringAsUtf8(-1);
 }
 
 std::string DuktapeRuntime::utf8(const facebook::jsi::PropNameID &prop) {
   duk_push_heapptr(ctx, DuktapePropNameID::get(prop));
-  return std::string(duk_get_string(ctx, -1));
+  return dukCopyStringAsUtf8(-1);
 }
 
 bool DuktapeRuntime::compare(const facebook::jsi::PropNameID &a,

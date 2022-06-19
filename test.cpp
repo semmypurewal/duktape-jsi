@@ -235,6 +235,27 @@ TEST_F(DuktapeRuntimeTest, HostFunctionUtilities) {
   // EXPECT_EQ(f.getHostFunction(*dt), host_function);
 }
 
+TEST_F(DuktapeRuntimeTest, Cesu8ToUtf8Test) {
+  auto eval = dt->global().getPropertyAsFunction(*dt, "eval");
+  eval.call(*dt, "x = {thumbsDown:'\\uD83D\\uDC4E', "
+                 "thumbsUp:'\\uD83D\\uDC4D', ok:'\\uD83C\\uDD97'};");
+
+  facebook::jsi::Object x = dt->global().getPropertyAsObject(*dt, "x");
+
+  auto ok = x.getProperty(*dt, "ok").getString(*dt);
+  const char okUtf8[] = {(char)0xF0, (char)0x9F, (char)0x86, (char)0x97};
+  EXPECT_EQ(ok.utf8(*dt), std::string(okUtf8, 4));
+
+  auto thumbsUp = x.getProperty(*dt, "thumbsUp").getString(*dt);
+  const char thumbsUpUtf8[] = {(char)0xF0, (char)0x9F, (char)0x91, (char)0x8D};
+  EXPECT_EQ(thumbsUp.utf8(*dt), std::string(thumbsUpUtf8, 4));
+
+  auto thumbsDown = x.getProperty(*dt, "thumbsDown").getString(*dt);
+  const char thumbsDownUtf8[] = {(char)0xF0, (char)0x9F, (char)0x91,
+                                 (char)0x8E};
+  EXPECT_EQ(thumbsDown.utf8(*dt), std::string(thumbsDownUtf8, 4));
+}
+
 int main(int argc, char **argv) {
   InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
