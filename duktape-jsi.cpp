@@ -53,13 +53,15 @@ facebook::jsi::Object DuktapeRuntime::global() {
 
 facebook::jsi::PropNameID
 DuktapeRuntime::createPropNameIDFromAscii(const char *str, size_t length) {
-  duk_push_string(ctx, str);
+  std::string newStr(str, length);
+  duk_push_string(ctx, newStr.c_str());
   return DuktapePropNameID(duk_get_heapptr(ctx, -1));
 }
 
 facebook::jsi::PropNameID
 DuktapeRuntime::createPropNameIDFromUtf8(const uint8_t *utf8, size_t length) {
-  duk_push_string(ctx, (char *)utf8);
+  std::string utf8Str((char *)utf8, length);
+  duk_push_string(ctx, utf8Str.c_str());
   return DuktapePropNameID(duk_get_heapptr(ctx, -1));
 }
 
@@ -91,13 +93,15 @@ facebook::jsi::Runtime::PointerValue *DuktapeRuntime::clonePropNameID(
 
 facebook::jsi::String DuktapeRuntime::createStringFromAscii(const char *str,
                                                             size_t length) {
-  duk_push_string(ctx, str);
+  std::string newStr(str, length);
+  duk_push_string(ctx, newStr.c_str());
   return DuktapeString(duk_get_heapptr(ctx, -1));
 }
 
 facebook::jsi::String DuktapeRuntime::createStringFromUtf8(const uint8_t *utf8,
                                                            size_t length) {
-  duk_push_string(ctx, (char *)utf8);
+  std::string utf8Str((char *)utf8, length);
+  duk_push_string(ctx, utf8Str.c_str());
   return DuktapeString(duk_get_heapptr(ctx, -1));
 }
 
@@ -114,6 +118,11 @@ std::string DuktapeRuntime::utf8(const facebook::jsi::String &str) {
 std::string DuktapeRuntime::utf8(const facebook::jsi::PropNameID &prop) {
   duk_push_heapptr(ctx, DuktapePropNameID::get(prop));
   return std::string(duk_get_string(ctx, -1));
+}
+
+bool DuktapeRuntime::compare(const facebook::jsi::PropNameID &a,
+                             const facebook::jsi::PropNameID &b) {
+  return a.utf8(*this).compare(b.utf8(*this)) <= 0;
 }
 
 facebook::jsi::HostFunctionType &

@@ -68,9 +68,7 @@ public:
   std::string utf8(const facebook::jsi::PropNameID &) override;
 
   bool compare(const facebook::jsi::PropNameID &,
-               const facebook::jsi::PropNameID &) override {
-    throw std::logic_error("compare: unimplemented method");
-  }
+               const facebook::jsi::PropNameID &) override;
 
   std::string symbolToString(const facebook::jsi::Symbol &) override {
     throw std::logic_error("symbolToString: unimplemented method");
