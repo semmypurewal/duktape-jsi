@@ -298,6 +298,40 @@ private:
     duk_push_heapptr(ctx, DuktapePointer<T>::get(value));
   }
 
+  void dukPushUtf8String(const std::string &utf8) {
+    int nonBmpCharCount = 0;
+    for (size_t i = 0; i < utf8.size(); i++) {
+      if ((uint8_t)utf8.at(i) >> 4 == 0xf) {
+        nonBmpCharCount++;
+      }
+    }
+
+    if (nonBmpCharCount == 0) {
+      duk_push_string(ctx, utf8.c_str());
+      return;
+    }
+
+    std::string buffer = utf8;
+
+    int bufferIndex = 0;
+    for (size_t i = 0; i < utf8.size(); i++) {
+      if ((uint8_t)utf8.at(i) >> 4 == 0xf) {
+        auto utf32_temp = utf8_to_utf32((uint8_t *)(utf8.substr(i, 4).c_str()));
+        auto utf16_temp = utf32_to_utf16_pair(utf32_temp);
+        auto cesu8_temp = utf16_pair_to_cesu8(utf16_temp);
+        free(utf16_temp);
+
+        buffer.replace(i, 4, (char *)cesu8_temp);
+        free(cesu8_temp);
+        i += 3;
+      } else {
+        bufferIndex++;
+      }
+    }
+
+    duk_push_string(ctx, buffer.c_str());
+  }
+
   std::string dukCopyStringAsUtf8(int stack_index) {
     auto raw = duk_get_string(ctx, stack_index);
 
@@ -329,6 +363,38 @@ private:
         i += 5;
       }
     }
+    return result;
+  }
+
+  uint8_t *utf16_pair_to_cesu8(uint16_t *pair) {
+    uint8_t *result = (uint8_t *)malloc(sizeof(uint8_t) * 6);
+    result[0] = 0xED;
+    auto high = pair[0] - 0xD800;
+    result[1] = (high >> 6) + 0xA0;
+    result[2] = (high - (high >> 6 << 6)) + 0x80;
+    result[3] = 0xED;
+    auto low = pair[1] - 0xDC00;
+    result[4] = (low >> 6) + 0xB0;
+    result[5] = (low - (low >> 6 << 6)) + 0x80;
+    return result;
+  }
+
+  uint16_t *utf32_to_utf16_pair(uint32_t code_point) {
+    uint16_t *result = (uint16_t *)malloc(sizeof(uint16_t) * 2);
+    uint32_t temp = code_point - 0x10000;
+    uint16_t high = temp >> 10;
+    uint16_t low = temp - (high << 10);
+    result[0] = high + 0xD800;
+    result[1] = low + 0xDC00;
+    return result;
+  }
+
+  uint32_t utf8_to_utf32(uint8_t *bytes) {
+    uint32_t result = 0;
+    result += ((uint32_t)bytes[0] - 0xF0) << 18;
+    result += ((uint32_t)bytes[1] - 0x80) << 12;
+    result += ((uint32_t)bytes[2] - 0x80) << 6;
+    result += ((uint32_t)bytes[3] - 0x80);
     return result;
   }
 

@@ -61,7 +61,7 @@ DuktapeRuntime::createPropNameIDFromAscii(const char *str, size_t length) {
 facebook::jsi::PropNameID
 DuktapeRuntime::createPropNameIDFromUtf8(const uint8_t *utf8, size_t length) {
   std::string utf8Str((char *)utf8, length);
-  duk_push_string(ctx, utf8Str.c_str());
+  dukPushUtf8String(std::string((const char *)utf8, length));
   return DuktapePropNameID(duk_get_heapptr(ctx, -1));
 }
 
@@ -101,7 +101,7 @@ facebook::jsi::String DuktapeRuntime::createStringFromAscii(const char *str,
 facebook::jsi::String DuktapeRuntime::createStringFromUtf8(const uint8_t *utf8,
                                                            size_t length) {
   std::string utf8Str((char *)utf8, length);
-  duk_push_string(ctx, utf8Str.c_str());
+  dukPushUtf8String(std::string((const char *)utf8, length));
   return DuktapeString(duk_get_heapptr(ctx, -1));
 }
 
