@@ -35,8 +35,10 @@ facebook::jsi::Value DuktapeRuntime::evaluateJavaScript(
       duk_peval_string(ctx, reinterpret_cast<const char *>(buffer->data()));
 
   if (err) {
-    auto err_message = duk_safe_to_string(ctx, -1);
-    throw facebook::jsi::JSError(*this, err_message);
+    duk_safe_to_string(ctx, -1);
+    std::string message(duk_get_string(ctx, -1));
+    std::string stack("");
+    throw facebook::jsi::JSError(*this, message, stack);
   } else {
     return this->topOfStackToValue(ctx);
   }
@@ -48,7 +50,9 @@ bool DuktapeRuntime::isInspectable() { return false; }
 
 facebook::jsi::Object DuktapeRuntime::global() {
   duk_push_global_object(ctx);
-  return DuktapeObject(duk_get_heapptr(ctx, -1));
+  auto result = DuktapeObject(duk_get_heapptr(ctx, -1));
+  duk_pop(ctx);
+  return std::move(result);
 }
 
 facebook::jsi::PropNameID
@@ -112,12 +116,16 @@ facebook::jsi::Object DuktapeRuntime::createObject() {
 
 std::string DuktapeRuntime::utf8(const facebook::jsi::String &str) {
   duk_push_heapptr(ctx, DuktapeString::get(str));
-  return dukCopyStringAsUtf8(-1);
+  auto result = dukCopyStringAsUtf8(-1);
+  duk_pop(ctx);
+  return result;
 }
 
 std::string DuktapeRuntime::utf8(const facebook::jsi::PropNameID &prop) {
   duk_push_heapptr(ctx, DuktapePropNameID::get(prop));
-  return dukCopyStringAsUtf8(-1);
+  auto result = dukCopyStringAsUtf8(-1);
+  duk_pop(ctx);
+  return result;
 }
 
 bool DuktapeRuntime::compare(const facebook::jsi::PropNameID &a,
@@ -146,7 +154,9 @@ DuktapeRuntime::getProperty(const facebook::jsi::Object &obj,
   assert(duk_is_object(ctx, obj_index));
   assert(duk_is_string(ctx, -1));
   duk_get_prop(ctx, obj_index);
-  return topOfStackToValue(ctx);
+  auto result = topOfStackToValue(ctx);
+  duk_pop_2(ctx);
+  return result;
 }
 
 facebook::jsi::Value
@@ -159,19 +169,25 @@ DuktapeRuntime::getProperty(const facebook::jsi::Object &obj,
   assert(duk_is_object(ctx, obj_index));
   assert(duk_is_string(ctx, -1));
   duk_get_prop(ctx, obj_index);
-  return topOfStackToValue(ctx);
+  auto result = topOfStackToValue(ctx);
+  duk_pop_2(ctx);
+  return result;
 }
 
 bool DuktapeRuntime::hasProperty(const facebook::jsi::Object &obj,
                                  const facebook::jsi::PropNameID &name) {
   duk_push_heapptr(ctx, DuktapeObject::get(obj));
-  return duk_has_prop_heapptr(ctx, -1, DuktapePropNameID::get(name));
+  auto result = duk_has_prop_heapptr(ctx, -1, DuktapePropNameID::get(name));
+  duk_pop(ctx);
+  return result;
 }
 
 bool DuktapeRuntime::hasProperty(const facebook::jsi::Object &obj,
                                  const facebook::jsi::String &name) {
   duk_push_heapptr(ctx, DuktapeObject::get(obj));
-  return duk_has_prop_heapptr(ctx, -1, DuktapeString::get(name));
+  auto result = duk_has_prop_heapptr(ctx, -1, DuktapeString::get(name));
+  duk_pop(ctx);
+  return result;
 }
 
 void DuktapeRuntime::setPropertyValue(facebook::jsi::Object &obj,
@@ -188,6 +204,7 @@ void DuktapeRuntime::setPropertyValue(facebook::jsi::Object &obj,
   duk_pull(ctx, key_index);
   duk_pull(ctx, value_index - 1);
   duk_put_prop(ctx, obj_index);
+  duk_pop(ctx);
 }
 
 void DuktapeRuntime::setPropertyValue(facebook::jsi::Object &obj,
@@ -204,11 +221,14 @@ void DuktapeRuntime::setPropertyValue(facebook::jsi::Object &obj,
   duk_pull(ctx, key_index);
   duk_pull(ctx, value_index - 1);
   duk_put_prop(ctx, obj_index);
+  duk_pop(ctx);
 }
 
 bool DuktapeRuntime::isArray(const facebook::jsi::Object &obj) const {
   duk_push_heapptr(ctx, DuktapeObject::get(obj));
-  return duk_is_array(ctx, -1);
+  auto result = duk_is_array(ctx, -1);
+  duk_pop(ctx);
+  return result;
 }
 
 bool DuktapeRuntime::isFunction(const facebook::jsi::Object &obj) const {
@@ -233,12 +253,12 @@ DuktapeRuntime::getPropertyNames(const facebook::jsi::Object &obj) {
   duk_push_array(ctx);
   auto arr_index = duk_normalize_index(ctx, -1);
   duk_push_heapptr(ctx, DuktapeObject::get(obj));
-  // auto obj_index = duk_normalize_index(ctx, -1);
   duk_enum(ctx, -1, 0);
   auto enum_index = duk_normalize_index(ctx, -1);
   for (unsigned int i = 0; duk_next(ctx, enum_index, 0); i++) {
     duk_put_prop_index(ctx, arr_index, i);
   }
+  duk_pop(ctx);
   return stackToValue(ctx, arr_index).getObject(*this).getArray(*this);
 }
 
