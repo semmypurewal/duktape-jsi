@@ -85,14 +85,10 @@ public:
   facebook::jsi::Object createObject() override;
 
   facebook::jsi::Object
-  createObject(std::shared_ptr<facebook::jsi::HostObject> ho) override {
-    throw std::logic_error("createObject: unimplemented method");
-  }
+      createObject(std::shared_ptr<facebook::jsi::HostObject>) override;
 
   std::shared_ptr<facebook::jsi::HostObject>
-  getHostObject(const facebook::jsi::Object &) override {
-    throw std::logic_error("getHostObject: unimplemented method");
-  }
+  getHostObject(const facebook::jsi::Object &obj) override;
 
   facebook::jsi::HostFunctionType &
   getHostFunction(const facebook::jsi::Function &) override;
@@ -126,8 +122,12 @@ public:
 
   bool isFunction(const facebook::jsi::Object &) const override;
 
-  bool isHostObject(const facebook::jsi::Object &) const override {
-    throw std::logic_error("isHostObject: unimplemented method");
+  bool isHostObject(const facebook::jsi::Object &obj) const override {
+    duk_push_heapptr(ctx, DuktapeObject::get(obj));
+    bool result = duk_has_prop_string(
+        ctx, -1, DuktapeRuntime::DUKTAPE_HOST_OBJECT_ID_KEY);
+    duk_pop(ctx);
+    return result;
   }
 
   bool isHostFunction(const facebook::jsi::Function &func) const override;
@@ -199,10 +199,13 @@ public:
 private:
   duk_context *ctx;
   const static char *DUKTAPE_HOST_FUNCTION_ID_KEY;
-  static unsigned int current_hf_id;
+  const static char *DUKTAPE_HOST_OBJECT_ID_KEY;
+  static unsigned int currentHfId;
+  static unsigned int currentHoId;
   static facebook::jsi::Value stackToValue(duk_context *ctx, int stack_index);
   static facebook::jsi::Value topOfStackToValue(duk_context *ctx);
   static duk_ret_t dukProxyFunction(duk_context *ctx);
+  static duk_ret_t dukHostObjectGetProxyFunction(duk_context *ctx);
   void pushValueToStack(const facebook::jsi::Value &v);
 
   struct DuktapeHostFunction {
@@ -213,27 +216,22 @@ private:
     facebook::jsi::HostFunctionType func;
   };
 
+  struct DuktapeHostObject {
+    DuktapeHostObject(DuktapeHostObject &) = delete;
+    DuktapeHostObject(DuktapeRuntime *rt,
+                      std::shared_ptr<facebook::jsi::HostObject> ho)
+        : rt(rt), ho(ho){};
+    DuktapeRuntime *rt;
+    std::shared_ptr<facebook::jsi::HostObject> ho;
+  };
+
   using HostFunctionMapType =
       std::map<int, std::shared_ptr<DuktapeRuntime::DuktapeHostFunction>>;
-  static HostFunctionMapType *host_functions;
+  static HostFunctionMapType *hostFunctions;
 
-  class DuktapeHostObject : facebook::jsi::HostObject {
-  public:
-    DuktapeHostObject() {}
-
-    facebook::jsi::Value get(Runtime &runtime,
-                             const facebook::jsi::PropNameID &name) override {
-      return facebook::jsi::Value();
-    }
-
-    void set(Runtime &runtime, const facebook::jsi::PropNameID &name,
-             const facebook::jsi::Value &value) override {}
-
-    std::vector<facebook::jsi::PropNameID>
-    getPropertyNames(Runtime &rt) override {
-      return std::vector<facebook::jsi::PropNameID>();
-    };
-  };
+  using HostObjectMapType =
+      std::map<int, std::shared_ptr<DuktapeRuntime::DuktapeHostObject>>;
+  static HostObjectMapType *hostObjects;
 
   struct DuktapePointerValue : public facebook::jsi::Runtime::PointerValue {
     DuktapePointerValue(void *ptr)

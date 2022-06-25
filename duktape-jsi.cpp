@@ -4,24 +4,29 @@
 
 using namespace facebook;
 
-unsigned int DuktapeRuntime::current_hf_id = 0;
-DuktapeRuntime::HostFunctionMapType *DuktapeRuntime::host_functions =
+unsigned int DuktapeRuntime::currentHfId = 0;
+unsigned int DuktapeRuntime::currentHoId = 0;
+DuktapeRuntime::HostFunctionMapType *DuktapeRuntime::hostFunctions =
     new HostFunctionMapType;
+DuktapeRuntime::HostObjectMapType *DuktapeRuntime::hostObjects =
+    new HostObjectMapType;
 const char *DuktapeRuntime::DUKTAPE_HOST_FUNCTION_ID_KEY =
     "___duk_host_function_id";
+const char *DuktapeRuntime::DUKTAPE_HOST_OBJECT_ID_KEY =
+    "___duk_host_object_id";
 
 DuktapeRuntime::DuktapeRuntime() { ctx = duk_create_heap_default(); }
 DuktapeRuntime::~DuktapeRuntime() {
   // remove host functions from global map
   std::vector<int> v;
-  for (auto &pair : *host_functions) {
+  for (auto &pair : *hostFunctions) {
     if (pair.second->rt == this) {
       v.push_back(pair.first);
     }
   }
 
   for (auto index : v) {
-    host_functions->erase(index);
+    hostFunctions->erase(index);
   }
 
   // destroy duktape heap
@@ -114,6 +119,43 @@ facebook::jsi::Object DuktapeRuntime::createObject() {
   return DuktapeObject(duk_get_heapptr(ctx, -1));
 }
 
+facebook::jsi::Object
+DuktapeRuntime::createObject(std::shared_ptr<facebook::jsi::HostObject> ho) {
+  auto dho = std::make_shared<DuktapeHostObject>(this, ho);
+  unsigned int id = currentHoId++;
+  hostObjects->emplace(id, dho);
+
+  duk_push_object(ctx); // target
+  duk_push_object(ctx); // handler
+  duk_push_c_function(ctx, dukHostObjectGetProxyFunction, 3);
+  duk_put_prop_string(ctx, -2, "get");
+  duk_push_proxy(ctx, 0);
+
+  // add an id to the proxy
+  duk_push_string(ctx, DuktapeRuntime::DUKTAPE_HOST_OBJECT_ID_KEY);
+  duk_push_number(ctx, id);
+  duk_put_prop(ctx, -3);
+
+  assert(
+      duk_has_prop_string(ctx, -1, DuktapeRuntime::DUKTAPE_HOST_OBJECT_ID_KEY));
+
+  return DuktapeObject(duk_get_heapptr(ctx, -1));
+}
+
+std::shared_ptr<facebook::jsi::HostObject>
+DuktapeRuntime::getHostObject(const facebook::jsi::Object &obj) {
+  assert(obj.isHostObject(*this));
+  duk_push_heapptr(ctx, DuktapeObject::get(obj));
+  assert(
+      duk_has_prop_string(ctx, -1, DuktapeRuntime::DUKTAPE_HOST_OBJECT_ID_KEY));
+
+  duk_push_string(ctx, DuktapeRuntime::DUKTAPE_HOST_OBJECT_ID_KEY);
+  duk_get_prop(ctx, -2);
+  auto id = duk_get_number(ctx, -1);
+  auto hostObj = hostObjects->at(id);
+  return hostObj->ho;
+}
+
 std::string DuktapeRuntime::utf8(const facebook::jsi::String &str) {
   duk_push_heapptr(ctx, DuktapeString::get(str));
   auto result = dukCopyStringAsUtf8(-1);
@@ -140,7 +182,7 @@ DuktapeRuntime::getHostFunction(const facebook::jsi::Function &func) {
   duk_get_prop(ctx, -2);
   unsigned int id = duk_get_number(ctx, -1);
   duk_pop_2(ctx);
-  auto host_func = host_functions->at(id);
+  auto host_func = hostFunctions->at(id);
   return host_func->func;
 }
 
@@ -309,8 +351,8 @@ facebook::jsi::Function DuktapeRuntime::createFunctionFromHostFunction(
     const facebook::jsi::PropNameID &name, unsigned int paramCount,
     facebook::jsi::HostFunctionType func) {
   auto hf = std::make_shared<DuktapeHostFunction>(this, func);
-  unsigned int id = current_hf_id++;
-  host_functions->emplace(id, hf);
+  unsigned int id = currentHfId++;
+  hostFunctions->emplace(id, hf);
 
   duk_push_c_function(ctx, DuktapeRuntime::dukProxyFunction, DUK_VARARGS);
   duk_push_string(ctx, DuktapeRuntime::DUKTAPE_HOST_FUNCTION_ID_KEY);
@@ -367,6 +409,46 @@ facebook::jsi::Value DuktapeRuntime::stackToValue(duk_context *ctx,
   throw std::logic_error("unknown duktype");
 }
 
+duk_ret_t DuktapeRuntime::dukHostObjectGetProxyFunction(duk_context *ctx) {
+  int n = duk_get_top(ctx);
+  std::vector<facebook::jsi::Value> args;
+
+  auto property = duk_get_string(ctx, -2);
+  // the property may also be a number
+  if (!property) {
+    property = std::to_string((int)duk_get_number(ctx, -2)).c_str();
+  }
+
+  duk_get_prop_string(ctx, 0, DuktapeRuntime::DUKTAPE_HOST_OBJECT_ID_KEY);
+  auto id = duk_get_number(ctx, -1);
+
+  for (int i = 0; i < n; ++i) {
+    args.push_back(DuktapeRuntime::stackToValue(ctx, i - n));
+  }
+  for (int i = 0; i < n; ++i) {
+    duk_pop(ctx);
+  }
+
+  // we don't want to invoke the trap when trying to get the host object id
+  if (strcmp(property, DuktapeRuntime::DUKTAPE_HOST_OBJECT_ID_KEY) == 0) {
+    duk_push_number(ctx, id);
+  } else {
+    // need to get hostobject
+    auto hostObj = hostObjects->at(id);
+    assert(hostObj != nullptr);
+    auto dt = hostObj->rt;
+    assert(dt != nullptr);
+    auto propName =
+        facebook::jsi::PropNameID::forAscii(*dt, property, strlen(property));
+    // need to call get with the prop and return the value
+    auto ho = hostObj->ho;
+    auto result = ho->get(*dt, propName);
+    hostObj->rt->pushValueToStack(result);
+  }
+
+  return 1;
+}
+
 duk_ret_t DuktapeRuntime::dukProxyFunction(duk_context *ctx) {
   int n = duk_get_top(ctx);
   std::vector<facebook::jsi::Value> args;
@@ -383,9 +465,9 @@ duk_ret_t DuktapeRuntime::dukProxyFunction(duk_context *ctx) {
   duk_get_prop(ctx, -2);
   unsigned int id = duk_get_number(ctx, -1);
   duk_pop_2(ctx);
-  auto host_func = host_functions->at(id);
-  auto dt = host_func->rt;
-  auto func = host_func->func;
+  auto hostFunc = hostFunctions->at(id);
+  auto dt = hostFunc->rt;
+  auto func = hostFunc->func;
   auto result = func(*dt, facebook::jsi::Value(), args.data(), n);
   dt->pushValueToStack(result);
   return 1;

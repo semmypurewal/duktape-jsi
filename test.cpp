@@ -4,6 +4,14 @@
 using ::testing::InitGoogleTest;
 using ::testing::Test;
 
+facebook::jsi::Function function(facebook::jsi::Runtime &rt,
+                                 const std::string &code) {
+  auto eval = rt.global().getPropertyAsFunction(rt, "eval");
+  return eval.call(rt, std::string("(" + code + ")").c_str())
+      .getObject(rt)
+      .getFunction(rt);
+}
+
 class DuktapeRuntimeTest : public Test {
 protected:
   std::shared_ptr<facebook::jsi::Runtime> dt;
@@ -290,6 +298,30 @@ TEST_F(DuktapeRuntimeTest, Utf8ToCesu8Test) {
 
   EXPECT_EQ(x.getPropertyNames(*dt).size(*dt), 3);
   EXPECT_TRUE(eval.call(*dt, "x['\\uD83D\\uDC4E'] == 'emoji3'").getBool());
+}
+
+TEST_F(DuktapeRuntimeTest, HostObject) {
+  class ConstantHostObject : public facebook::jsi::HostObject {
+    facebook::jsi::Value get(facebook::jsi::Runtime &,
+                             const facebook::jsi::PropNameID &sym) override {
+      return 9000;
+    }
+
+    void set(facebook::jsi::Runtime &, const facebook::jsi::PropNameID &,
+             const facebook::jsi::Value &) override {}
+  };
+
+  facebook::jsi::Object cho = facebook::jsi::Object::createFromHostObject(
+      *dt, std::make_shared<ConstantHostObject>());
+
+  EXPECT_TRUE(cho.isHostObject(*dt));
+
+  EXPECT_TRUE(
+      function(*dt, "function (obj) { return obj.someRandomProp == 9000; }")
+          .call(*dt, cho)
+          .getBool());
+
+  EXPECT_TRUE(cho.getHostObject<ConstantHostObject>(*dt).get() != nullptr);
 }
 
 int main(int argc, char **argv) {
