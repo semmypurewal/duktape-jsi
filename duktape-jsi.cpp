@@ -133,6 +133,9 @@ DuktapeRuntime::createObject(std::shared_ptr<facebook::jsi::HostObject> ho) {
   duk_push_object(ctx); // handler
   duk_push_c_function(ctx, dukHostObjectGetProxyFunction, 3);
   duk_put_prop_string(ctx, -2, "get");
+  duk_push_c_function(ctx, dukHostObjectSetProxyFunction, 4);
+  duk_put_prop_string(ctx, -2, "set");
+
   duk_push_proxy(ctx, 0);
 
   auto objHeapPtr = duk_get_heapptr(ctx, -1);
@@ -383,17 +386,20 @@ facebook::jsi::Value DuktapeRuntime::stackToValue(duk_context *ctx,
 }
 
 duk_ret_t DuktapeRuntime::dukHostObjectGetProxyFunction(duk_context *ctx) {
+  return dukHostObjectProxyFunction(true, ctx);
+}
+
+duk_ret_t DuktapeRuntime::dukHostObjectSetProxyFunction(duk_context *ctx) {
+  return dukHostObjectProxyFunction(false, ctx);
+}
+
+duk_ret_t DuktapeRuntime::dukHostObjectProxyFunction(bool get,
+                                                     duk_context *ctx) {
   int n = duk_get_top(ctx);
   std::vector<facebook::jsi::Value> args;
 
-  auto property = duk_get_string(ctx, -2);
-  // the property may also be a number
-  if (!property) {
-    property = std::to_string((int)duk_get_number(ctx, -2)).c_str();
-  }
-
-  auto objPointer = duk_get_heapptr(ctx, -1);
-  assert(hostObjects->find(objPointer) != hostObjects->end());
+  auto proxyPointer = duk_get_heapptr(ctx, -1);
+  assert(hostObjects->find(proxyPointer) != hostObjects->end());
 
   for (int i = 0; i < n; ++i) {
     args.push_back(DuktapeRuntime::stackToValue(ctx, i - n));
@@ -402,15 +408,20 @@ duk_ret_t DuktapeRuntime::dukHostObjectGetProxyFunction(duk_context *ctx) {
     duk_pop(ctx);
   }
 
-  auto hostObj = hostObjects->at(objPointer);
+  auto hostObj = hostObjects->at(proxyPointer);
   assert(hostObj != nullptr);
   auto dt = hostObj->rt;
   assert(dt != nullptr);
   auto propName =
-      facebook::jsi::PropNameID::forAscii(*dt, property, strlen(property));
+      facebook::jsi::PropNameID::forString(*dt, args[1].getString(*dt));
   auto ho = hostObj->ho;
-  auto result = ho->get(*dt, propName);
-  dt->pushValueToStack(result);
+  if (get) {
+    auto result = ho->get(*dt, propName);
+    dt->pushValueToStack(result);
+  } else {
+    ho->set(*dt, propName, args[2]);
+    dt->pushValueToStack(args[2]);
+  }
   return 1;
 }
 

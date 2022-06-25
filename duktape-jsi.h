@@ -197,7 +197,9 @@ private:
   static facebook::jsi::Value stackToValue(duk_context *ctx, int stack_index);
   static facebook::jsi::Value topOfStackToValue(duk_context *ctx);
   static duk_ret_t dukProxyFunction(duk_context *ctx);
+  static duk_ret_t dukHostObjectProxyFunction(bool get, duk_context *ctx);
   static duk_ret_t dukHostObjectGetProxyFunction(duk_context *ctx);
+  static duk_ret_t dukHostObjectSetProxyFunction(duk_context *ctx);
   void pushValueToStack(const facebook::jsi::Value &v);
 
   struct DuktapeHostFunction {
@@ -249,6 +251,8 @@ private:
     static void *get(T &obj) {
       return static_cast<const DuktapePointer<T> &>(obj).getDukHeapPtr();
     }
+
+    void *get() { return DuktapePointer<T>::get(this); }
 
   private:
     void *getDukHeapPtr() const {

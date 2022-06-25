@@ -302,17 +302,26 @@ TEST_F(DuktapeRuntimeTest, Utf8ToCesu8Test) {
 
 TEST_F(DuktapeRuntimeTest, HostObject) {
   class ConstantHostObject : public facebook::jsi::HostObject {
+  public:
+    bool setCalled = false;
+    bool getCalled = false;
+
     facebook::jsi::Value get(facebook::jsi::Runtime &,
                              const facebook::jsi::PropNameID &sym) override {
+      getCalled = true;
       return 9000;
     }
 
-    void set(facebook::jsi::Runtime &, const facebook::jsi::PropNameID &,
-             const facebook::jsi::Value &) override {}
+    void set(facebook::jsi::Runtime &rt, const facebook::jsi::PropNameID &prop,
+             const facebook::jsi::Value &val) override {
+      setCalled = true;
+    }
   };
 
-  facebook::jsi::Object cho = facebook::jsi::Object::createFromHostObject(
-      *dt, std::make_shared<ConstantHostObject>());
+  auto ho = std::make_shared<ConstantHostObject>();
+
+  facebook::jsi::Object cho =
+      facebook::jsi::Object::createFromHostObject(*dt, ho);
 
   EXPECT_TRUE(cho.isHostObject(*dt));
 
@@ -320,6 +329,18 @@ TEST_F(DuktapeRuntimeTest, HostObject) {
       function(*dt, "function (obj) { return obj.someRandomProp == 9000; }")
           .call(*dt, cho)
           .getBool());
+
+  EXPECT_TRUE(ho->getCalled);
+
+  EXPECT_EQ(
+      function(*dt,
+               "function (obj) { return (obj.thisIsAThing = 'randoString'); }")
+          .call(*dt, cho)
+          .getString(*dt)
+          .utf8(*dt),
+      "randoString");
+
+  EXPECT_TRUE(ho->setCalled);
 
   EXPECT_TRUE(cho.getHostObject<ConstantHostObject>(*dt).get() != nullptr);
 }
