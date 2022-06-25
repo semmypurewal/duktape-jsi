@@ -200,7 +200,6 @@ private:
   duk_context *ctx;
   const static char *DUKTAPE_HOST_FUNCTION_ID_KEY;
   const static char *DUKTAPE_HOST_OBJECT_ID_KEY;
-  static unsigned int currentHfId;
   static unsigned int currentHoId;
   static facebook::jsi::Value stackToValue(duk_context *ctx, int stack_index);
   static facebook::jsi::Value topOfStackToValue(duk_context *ctx);
@@ -226,7 +225,7 @@ private:
   };
 
   using HostFunctionMapType =
-      std::map<int, std::shared_ptr<DuktapeRuntime::DuktapeHostFunction>>;
+      std::map<void *, std::shared_ptr<DuktapeRuntime::DuktapeHostFunction>>;
   static HostFunctionMapType *hostFunctions;
 
   using HostObjectMapType =
