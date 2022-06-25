@@ -123,11 +123,7 @@ public:
   bool isFunction(const facebook::jsi::Object &) const override;
 
   bool isHostObject(const facebook::jsi::Object &obj) const override {
-    duk_push_heapptr(ctx, DuktapeObject::get(obj));
-    bool result = duk_has_prop_string(
-        ctx, -1, DuktapeRuntime::DUKTAPE_HOST_OBJECT_ID_KEY);
-    duk_pop(ctx);
-    return result;
+    return hostObjects->find(DuktapeObject::get(obj)) != hostObjects->end();
   }
 
   bool isHostFunction(const facebook::jsi::Function &func) const override;
@@ -198,9 +194,6 @@ public:
 
 private:
   duk_context *ctx;
-  const static char *DUKTAPE_HOST_FUNCTION_ID_KEY;
-  const static char *DUKTAPE_HOST_OBJECT_ID_KEY;
-  static unsigned int currentHoId;
   static facebook::jsi::Value stackToValue(duk_context *ctx, int stack_index);
   static facebook::jsi::Value topOfStackToValue(duk_context *ctx);
   static duk_ret_t dukProxyFunction(duk_context *ctx);
@@ -229,7 +222,7 @@ private:
   static HostFunctionMapType *hostFunctions;
 
   using HostObjectMapType =
-      std::map<int, std::shared_ptr<DuktapeRuntime::DuktapeHostObject>>;
+      std::map<void *, std::shared_ptr<DuktapeRuntime::DuktapeHostObject>>;
   static HostObjectMapType *hostObjects;
 
   struct DuktapePointerValue : public facebook::jsi::Runtime::PointerValue {

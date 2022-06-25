@@ -4,13 +4,10 @@
 
 using namespace facebook;
 
-unsigned int DuktapeRuntime::currentHoId = 0;
 DuktapeRuntime::HostFunctionMapType *DuktapeRuntime::hostFunctions =
     new HostFunctionMapType;
 DuktapeRuntime::HostObjectMapType *DuktapeRuntime::hostObjects =
     new HostObjectMapType;
-const char *DuktapeRuntime::DUKTAPE_HOST_OBJECT_ID_KEY =
-    "___duk_host_object_id";
 
 DuktapeRuntime::DuktapeRuntime() { ctx = duk_create_heap_default(); }
 DuktapeRuntime::~DuktapeRuntime() {
@@ -24,6 +21,18 @@ DuktapeRuntime::~DuktapeRuntime() {
 
   for (auto index : toRemove) {
     hostFunctions->erase(index);
+  }
+
+  // remove host objects from global map
+  toRemove.clear();
+  for (auto &pair : *hostObjects) {
+    if (pair.second->rt == this) {
+      toRemove.push_back(pair.first);
+    }
+  }
+
+  for (auto index : toRemove) {
+    hostObjects->erase(index);
   }
 
   // destroy duktape heap
@@ -119,8 +128,6 @@ facebook::jsi::Object DuktapeRuntime::createObject() {
 facebook::jsi::Object
 DuktapeRuntime::createObject(std::shared_ptr<facebook::jsi::HostObject> ho) {
   auto dho = std::make_shared<DuktapeHostObject>(this, ho);
-  unsigned int id = currentHoId++;
-  hostObjects->emplace(id, dho);
 
   duk_push_object(ctx); // target
   duk_push_object(ctx); // handler
@@ -128,29 +135,15 @@ DuktapeRuntime::createObject(std::shared_ptr<facebook::jsi::HostObject> ho) {
   duk_put_prop_string(ctx, -2, "get");
   duk_push_proxy(ctx, 0);
 
-  // add an id to the proxy
-  duk_push_string(ctx, DuktapeRuntime::DUKTAPE_HOST_OBJECT_ID_KEY);
-  duk_push_number(ctx, id);
-  duk_put_prop(ctx, -3);
-
-  assert(
-      duk_has_prop_string(ctx, -1, DuktapeRuntime::DUKTAPE_HOST_OBJECT_ID_KEY));
-
-  return DuktapeObject(duk_get_heapptr(ctx, -1));
+  auto objHeapPtr = duk_get_heapptr(ctx, -1);
+  hostObjects->emplace(objHeapPtr, dho);
+  return DuktapeObject(objHeapPtr);
 }
 
 std::shared_ptr<facebook::jsi::HostObject>
 DuktapeRuntime::getHostObject(const facebook::jsi::Object &obj) {
   assert(obj.isHostObject(*this));
-  duk_push_heapptr(ctx, DuktapeObject::get(obj));
-  assert(
-      duk_has_prop_string(ctx, -1, DuktapeRuntime::DUKTAPE_HOST_OBJECT_ID_KEY));
-
-  duk_push_string(ctx, DuktapeRuntime::DUKTAPE_HOST_OBJECT_ID_KEY);
-  duk_get_prop(ctx, -2);
-  auto id = duk_get_number(ctx, -1);
-  auto hostObj = hostObjects->at(id);
-  return hostObj->ho;
+  return hostObjects->at(DuktapeObject::get(obj))->ho;
 }
 
 std::string DuktapeRuntime::utf8(const facebook::jsi::String &str) {
@@ -399,8 +392,8 @@ duk_ret_t DuktapeRuntime::dukHostObjectGetProxyFunction(duk_context *ctx) {
     property = std::to_string((int)duk_get_number(ctx, -2)).c_str();
   }
 
-  duk_get_prop_string(ctx, 0, DuktapeRuntime::DUKTAPE_HOST_OBJECT_ID_KEY);
-  auto id = duk_get_number(ctx, -1);
+  auto objPointer = duk_get_heapptr(ctx, -1);
+  assert(hostObjects->find(objPointer) != hostObjects->end());
 
   for (int i = 0; i < n; ++i) {
     args.push_back(DuktapeRuntime::stackToValue(ctx, i - n));
@@ -409,23 +402,15 @@ duk_ret_t DuktapeRuntime::dukHostObjectGetProxyFunction(duk_context *ctx) {
     duk_pop(ctx);
   }
 
-  // we don't want to invoke the trap when trying to get the host object id
-  if (strcmp(property, DuktapeRuntime::DUKTAPE_HOST_OBJECT_ID_KEY) == 0) {
-    duk_push_number(ctx, id);
-  } else {
-    // need to get hostobject
-    auto hostObj = hostObjects->at(id);
-    assert(hostObj != nullptr);
-    auto dt = hostObj->rt;
-    assert(dt != nullptr);
-    auto propName =
-        facebook::jsi::PropNameID::forAscii(*dt, property, strlen(property));
-    // need to call get with the prop and return the value
-    auto ho = hostObj->ho;
-    auto result = ho->get(*dt, propName);
-    hostObj->rt->pushValueToStack(result);
-  }
-
+  auto hostObj = hostObjects->at(objPointer);
+  assert(hostObj != nullptr);
+  auto dt = hostObj->rt;
+  assert(dt != nullptr);
+  auto propName =
+      facebook::jsi::PropNameID::forAscii(*dt, property, strlen(property));
+  auto ho = hostObj->ho;
+  auto result = ho->get(*dt, propName);
+  dt->pushValueToStack(result);
   return 1;
 }
 
