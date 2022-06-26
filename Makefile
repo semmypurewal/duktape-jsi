@@ -21,7 +21,7 @@ $(BUILDS)/jsi-test.o: jsi/test/testlib.h jsi/test/testlib.cpp | $(BUILDS)
 $(BUILDS)/duktape-jsi.a: $(BUILDS)/jsi.o $(BUILDS)/duktape.o $(BUILDS)/duktape-jsi.o
 	$(AR) $(ARFLAGS) $@ $^
 
-$(BUILDS)/duktape-jsi.o: duktape-jsi.h duktape-jsi.cpp | $(BUILDS)
+$(BUILDS)/duktape-jsi.o: cesu8/cesu8.h duktape-jsi.h duktape-jsi.cpp | $(BUILDS)
 	$(CPP) $(CFLAGS) -o $(BUILDS)/duktape-jsi.o -c duktape-jsi.cpp -I.
 
 $(BUILDS)/jsi.o: $(JSI_DIR)/* | $(BUILDS)

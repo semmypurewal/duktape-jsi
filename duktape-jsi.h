@@ -1,3 +1,4 @@
+#include "cesu8/cesu8.h"
 #include "duktape-2.7.0/src/duktape.h"
 #include "jsi/jsi.h"
 #include <cassert>
@@ -293,130 +294,16 @@ private:
   }
 
   void dukPushUtf8String(const std::string &utf8) {
-    int nonBmpCharCount = 0;
-    for (size_t i = 0; i < utf8.size(); i++) {
-      if ((uint8_t)utf8.at(i) >> 4 == 0xf) {
-        nonBmpCharCount++;
-      }
-    }
-
-    if (nonBmpCharCount == 0) {
-      duk_push_string(ctx, utf8.c_str());
-      return;
-    }
-
-    std::string buffer = utf8;
-
-    int bufferIndex = 0;
-    for (size_t i = 0; i < utf8.size(); i++) {
-      if ((uint8_t)utf8.at(i) >> 4 == 0xf) {
-        auto utf32_temp = utf8_to_utf32((uint8_t *)(utf8.substr(i, 4).c_str()));
-        auto utf16_temp = utf32_to_utf16_pair(utf32_temp);
-        auto cesu8_temp = utf16_pair_to_cesu8(utf16_temp);
-        free(utf16_temp);
-
-        buffer.replace(i, 4, (char *)cesu8_temp);
-        free(cesu8_temp);
-        i += 3;
-      } else {
-        bufferIndex++;
-      }
-    }
-
-    duk_push_string(ctx, buffer.c_str());
+    auto cesu8 = (char *)copy_utf8_as_cesu8(utf8.c_str());
+    duk_push_string(ctx, cesu8);
+    free(cesu8);
   }
 
   std::string dukCopyStringAsUtf8(int stack_index) {
-    auto raw = duk_get_string(ctx, stack_index);
-
-    int nonBmpCharCount = 0;
-    for (size_t i = 0; i < strlen(raw); i++) {
-      if ((uint8_t)raw[i] == 0xED) {
-        nonBmpCharCount++;
-        i += 5;
-      }
-    }
-
-    // if there are no non-bmp chars, we're good
-    if (nonBmpCharCount == 0) {
-      return std::string(raw);
-    }
-
-    // otherwise we need to convert CESU-8 data to UTF-8
-    std::string result("");
-
-    for (size_t i = 0; i < strlen(raw); i++) {
-      if ((uint8_t)raw[i] != 0xED) {
-        result.push_back(raw[i]);
-      } else {
-        auto pairs = cesu8_to_utf16_pairs((uint8_t *)raw, i);
-        auto utf8_char = utf32_to_utf8(utf16_pair_to_utf32(pairs));
-        free(pairs);
-        result.append(std::string((char *)utf8_char, 4), 0, 4);
-        free(utf8_char);
-        i += 5;
-      }
-    }
-    return result;
-  }
-
-  uint8_t *utf16_pair_to_cesu8(uint16_t *pair) {
-    uint8_t *result = (uint8_t *)malloc(sizeof(uint8_t) * 6);
-    result[0] = 0xED;
-    auto high = pair[0] - 0xD800;
-    result[1] = (high >> 6) + 0xA0;
-    result[2] = (high - (high >> 6 << 6)) + 0x80;
-    result[3] = 0xED;
-    auto low = pair[1] - 0xDC00;
-    result[4] = (low >> 6) + 0xB0;
-    result[5] = (low - (low >> 6 << 6)) + 0x80;
-    return result;
-  }
-
-  uint16_t *utf32_to_utf16_pair(uint32_t code_point) {
-    uint16_t *result = (uint16_t *)malloc(sizeof(uint16_t) * 2);
-    uint32_t temp = code_point - 0x10000;
-    uint16_t high = temp >> 10;
-    uint16_t low = temp - (high << 10);
-    result[0] = high + 0xD800;
-    result[1] = low + 0xDC00;
-    return result;
-  }
-
-  uint32_t utf8_to_utf32(uint8_t *bytes) {
-    uint32_t result = 0;
-    result += ((uint32_t)bytes[0] - 0xF0) << 18;
-    result += ((uint32_t)bytes[1] - 0x80) << 12;
-    result += ((uint32_t)bytes[2] - 0x80) << 6;
-    result += ((uint32_t)bytes[3] - 0x80);
-    return result;
-  }
-
-  uint8_t *utf32_to_utf8(uint32_t code_point) {
-    uint8_t *result = (uint8_t *)malloc(sizeof(uint8_t) * 4);
-    result[0] = 0xF0 + (code_point >> 18);
-    result[1] = 0x80 + ((code_point - ((result[0] - 0xF0) << 18)) >> 12);
-    result[2] = 0x80 + ((code_point - ((result[1] - 0x80) << 12)) >> 6);
-    result[3] = 0x80 + ((code_point - ((result[2] - 0x80) << 6)));
-    return result;
-  }
-
-  uint32_t utf16_pair_to_utf32(uint16_t *pair) {
-    return (pair[0] - 0xD800) * 0x400 + (pair[1] - 0xdc00) + 0x10000;
-  }
-
-  uint16_t *cesu8_to_utf16_pairs(uint8_t *bytes, int offset) {
-    uint16_t *result = (uint16_t *)malloc(sizeof(uint16_t) * 2);
-
-    uint16_t high = (uint16_t)0xD800 + ((bytes[offset + 1] - 0xA0) << 6) +
-                    (bytes[offset + 2] - 0x80);
-
-    uint16_t low = (uint16_t)0xDC00 + ((bytes[offset + 4] - 0xB0) << 6) +
-                   (bytes[offset + 5] - 0x80);
-
-    result[0] = high;
-    result[1] = low;
-
+    auto cesu8 = duk_get_string(ctx, stack_index);
+    auto utf8 = (char *)copy_cesu8_as_utf8(cesu8);
+    auto result = std::string(utf8);
+    free(utf8);
     return result;
   }
 };
