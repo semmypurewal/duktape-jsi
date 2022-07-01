@@ -305,6 +305,7 @@ TEST_F(DuktapeRuntimeTest, HostObject) {
   public:
     bool setCalled = false;
     bool getCalled = false;
+    bool getPropertyNamesCalled = false;
 
     facebook::jsi::Value get(facebook::jsi::Runtime &,
                              const facebook::jsi::PropNameID &sym) override {
@@ -315,6 +316,13 @@ TEST_F(DuktapeRuntimeTest, HostObject) {
     void set(facebook::jsi::Runtime &rt, const facebook::jsi::PropNameID &prop,
              const facebook::jsi::Value &val) override {
       setCalled = true;
+    }
+
+    std::vector<facebook::jsi::PropNameID>
+    getPropertyNames(facebook::jsi::Runtime &rt) override {
+      getPropertyNamesCalled = true;
+      return facebook::jsi::PropNameID::names(rt, "a_prop", "1", "false",
+                                              "a_prop", "3", "c_prop");
     }
   };
 
@@ -340,9 +348,15 @@ TEST_F(DuktapeRuntimeTest, HostObject) {
           .utf8(*dt),
       "randoString");
 
+  EXPECT_TRUE(function(*dt, "function (obj) { return "
+                            "Object.getOwnPropertyNames(obj).length == 5}")
+                  .call(*dt, cho)
+                  .getBool());
+
   EXPECT_TRUE(ho->setCalled);
 
   EXPECT_TRUE(cho.getHostObject<ConstantHostObject>(*dt).get() != nullptr);
+  EXPECT_TRUE(ho->getPropertyNamesCalled);
 }
 
 int main(int argc, char **argv) {

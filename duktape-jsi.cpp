@@ -1,5 +1,6 @@
 #include "duktape-jsi.h"
 #include "jsi/jsi.h"
+#include <algorithm>
 #include <cassert>
 
 using namespace facebook;
@@ -116,7 +117,7 @@ facebook::jsi::String DuktapeRuntime::createStringFromAscii(const char *str,
 facebook::jsi::String DuktapeRuntime::createStringFromUtf8(const uint8_t *utf8,
                                                            size_t length) {
   std::string utf8Str((char *)utf8, length);
-  dukPushUtf8String(std::string((const char *)utf8, length));
+  dukPushUtf8String(utf8Str);
   return DuktapeString(duk_get_heapptr(ctx, -1));
 }
 
@@ -127,20 +128,25 @@ facebook::jsi::Object DuktapeRuntime::createObject() {
 
 facebook::jsi::Object
 DuktapeRuntime::createObject(std::shared_ptr<facebook::jsi::HostObject> ho) {
-  auto dho = std::make_shared<DuktapeHostObject>(this, ho);
-
   duk_push_object(ctx); // target
+  auto targetHeapPtr = duk_get_heapptr(ctx, -1);
   duk_push_object(ctx); // handler
   duk_push_c_function(ctx, dukHostObjectGetProxyFunction, 3);
   duk_put_prop_string(ctx, -2, "get");
   duk_push_c_function(ctx, dukHostObjectSetProxyFunction, 4);
   duk_put_prop_string(ctx, -2, "set");
+  duk_push_c_function(ctx, dukHostObjectOwnKeysProxyFunction, 1);
+  duk_put_prop_string(ctx, -2, "ownKeys");
 
   duk_push_proxy(ctx, 0);
+  auto proxyHeapPtr = duk_get_heapptr(ctx, -1);
 
-  auto objHeapPtr = duk_get_heapptr(ctx, -1);
-  hostObjects->emplace(objHeapPtr, dho);
-  return DuktapeObject(objHeapPtr);
+  auto dho = std::make_shared<DuktapeHostObject>(this, ho);
+  // we add the HostObject to the map twice so we can look it up by both the
+  // proxy and the target
+  hostObjects->emplace(proxyHeapPtr, dho);
+  hostObjects->emplace(targetHeapPtr, dho);
+  return DuktapeObject(proxyHeapPtr);
 }
 
 std::shared_ptr<facebook::jsi::HostObject>
@@ -165,7 +171,7 @@ std::string DuktapeRuntime::utf8(const facebook::jsi::PropNameID &prop) {
 
 bool DuktapeRuntime::compare(const facebook::jsi::PropNameID &a,
                              const facebook::jsi::PropNameID &b) {
-  return a.utf8(*this).compare(b.utf8(*this)) <= 0;
+  return a.utf8(*this).compare(b.utf8(*this)) == 0;
 }
 
 facebook::jsi::HostFunctionType &
@@ -386,14 +392,18 @@ facebook::jsi::Value DuktapeRuntime::stackToValue(duk_context *ctx,
 }
 
 duk_ret_t DuktapeRuntime::dukHostObjectGetProxyFunction(duk_context *ctx) {
-  return dukHostObjectProxyFunction(true, ctx);
+  return dukHostObjectProxyFunction(std::string("get"), ctx);
 }
 
 duk_ret_t DuktapeRuntime::dukHostObjectSetProxyFunction(duk_context *ctx) {
-  return dukHostObjectProxyFunction(false, ctx);
+  return dukHostObjectProxyFunction(std::string("set"), ctx);
 }
 
-duk_ret_t DuktapeRuntime::dukHostObjectProxyFunction(bool get,
+duk_ret_t DuktapeRuntime::dukHostObjectOwnKeysProxyFunction(duk_context *ctx) {
+  return dukHostObjectProxyFunction(std::string("ownKeys"), ctx);
+}
+
+duk_ret_t DuktapeRuntime::dukHostObjectProxyFunction(std::string trap,
                                                      duk_context *ctx) {
   int n = duk_get_top(ctx);
   std::vector<facebook::jsi::Value> args;
@@ -412,15 +422,57 @@ duk_ret_t DuktapeRuntime::dukHostObjectProxyFunction(bool get,
   assert(hostObj != nullptr);
   auto dt = hostObj->rt;
   assert(dt != nullptr);
-  auto propName =
-      facebook::jsi::PropNameID::forString(*dt, args[1].getString(*dt));
   auto ho = hostObj->ho;
-  if (get) {
-    auto result = ho->get(*dt, propName);
-    dt->pushValueToStack(result);
+  assert(ho != nullptr);
+
+  if (trap == "ownKeys") {
+    auto names = ho->getPropertyNames(*dt);
+
+    // uniquify the names (omg this is terrible)
+    std::vector<std::string> namesUtf8;
+    std::transform(
+        names.begin(), names.end(), std::back_inserter(namesUtf8),
+        [&](facebook::jsi::PropNameID &prop) { return prop.utf8(*dt); });
+
+    std::sort(namesUtf8.begin(), namesUtf8.end());
+    namesUtf8.erase(std::unique(namesUtf8.begin(), namesUtf8.end()),
+                    namesUtf8.end());
+
+    auto result = facebook::jsi::Array(*dt, namesUtf8.size());
+    for (size_t i = 0; i < namesUtf8.size(); i++) {
+      auto str = dt->createStringFromUtf8((uint8_t *)namesUtf8[i].c_str(),
+                                          namesUtf8[i].size());
+      result.setValueAtIndex(*dt, i, str);
+    }
+
+    dt->pushValueToStack(std::move(result));
   } else {
-    ho->set(*dt, propName, args[2]);
-    dt->pushValueToStack(args[2]);
+    if (!args[1].isString()) {
+      auto numString = std::to_string((int)args[1].getNumber());
+      args[1] = dt->createStringFromAscii(numString.c_str(),
+                                          strlen(numString.c_str()));
+    }
+
+    auto propName =
+        facebook::jsi::PropNameID::forString(*dt, args[1].getString(*dt));
+
+    if (trap == "get") {
+      try {
+        auto result = ho->get(*dt, propName);
+        dt->pushValueToStack(result);
+      } catch (std::exception &e) {
+        throw facebook::jsi::JSError(*dt, e.what(), "");
+      }
+    } else if (trap == "set") {
+      try {
+        ho->set(*dt, propName, args[2]);
+        dt->pushValueToStack(args[2]);
+      } catch (std::exception &e) {
+        throw facebook::jsi::JSError(*dt, e.what(), "");
+      }
+    } else {
+      throw std::runtime_error("unknown trap");
+    }
   }
   return 1;
 }

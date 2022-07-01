@@ -198,9 +198,11 @@ private:
   static facebook::jsi::Value stackToValue(duk_context *ctx, int stack_index);
   static facebook::jsi::Value topOfStackToValue(duk_context *ctx);
   static duk_ret_t dukProxyFunction(duk_context *ctx);
-  static duk_ret_t dukHostObjectProxyFunction(bool get, duk_context *ctx);
+  static duk_ret_t dukHostObjectProxyFunction(std::string trap,
+                                              duk_context *ctx);
   static duk_ret_t dukHostObjectGetProxyFunction(duk_context *ctx);
   static duk_ret_t dukHostObjectSetProxyFunction(duk_context *ctx);
+  static duk_ret_t dukHostObjectOwnKeysProxyFunction(duk_context *ctx);
   void pushValueToStack(const facebook::jsi::Value &v);
 
   struct DuktapeHostFunction {
