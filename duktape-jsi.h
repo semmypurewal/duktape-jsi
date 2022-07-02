@@ -296,14 +296,14 @@ private:
   }
 
   void dukPushUtf8String(const std::string &utf8) {
-    auto cesu8 = (char *)copy_utf8_as_cesu8(utf8.c_str());
+    auto cesu8 = (char *)copy_utf8_as_cesu8(utf8.c_str(), strlen(utf8.c_str()));
     duk_push_string(ctx, cesu8);
     free(cesu8);
   }
 
   std::string dukCopyStringAsUtf8(int stack_index) {
     auto cesu8 = duk_get_string(ctx, stack_index);
-    auto utf8 = (char *)copy_cesu8_as_utf8(cesu8);
+    auto utf8 = (char *)copy_cesu8_as_utf8(cesu8, strlen(cesu8));
     auto result = std::string(utf8);
     free(utf8);
     return result;
