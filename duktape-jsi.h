@@ -195,8 +195,8 @@ public:
 
 private:
   duk_context *ctx;
-  static facebook::jsi::Value stackToValue(duk_context *ctx, int stack_index);
-  static facebook::jsi::Value topOfStackToValue(duk_context *ctx);
+  facebook::jsi::Value stackToValue(int stack_index);
+  facebook::jsi::Value topOfStackToValue();
   static duk_ret_t dukProxyFunction(duk_context *ctx);
   static duk_ret_t dukHostObjectProxyFunction(std::string trap,
                                               duk_context *ctx);

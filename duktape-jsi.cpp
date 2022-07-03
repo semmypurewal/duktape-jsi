@@ -52,7 +52,7 @@ facebook::jsi::Value DuktapeRuntime::evaluateJavaScript(
     std::string stack("");
     throw facebook::jsi::JSError(*this, message, stack);
   } else {
-    return this->topOfStackToValue(ctx);
+    return topOfStackToValue();
   }
 }
 
@@ -190,7 +190,7 @@ DuktapeRuntime::getProperty(const facebook::jsi::Object &obj,
   assert(duk_is_object(ctx, obj_index));
   assert(duk_is_string(ctx, -1));
   duk_get_prop(ctx, obj_index);
-  auto result = topOfStackToValue(ctx);
+  auto result = topOfStackToValue();
   duk_pop_2(ctx);
   return result;
 }
@@ -205,7 +205,7 @@ DuktapeRuntime::getProperty(const facebook::jsi::Object &obj,
   assert(duk_is_object(ctx, obj_index));
   assert(duk_is_string(ctx, -1));
   duk_get_prop(ctx, obj_index);
-  auto result = topOfStackToValue(ctx);
+  auto result = topOfStackToValue();
   duk_pop_2(ctx);
   return result;
 }
@@ -290,7 +290,7 @@ DuktapeRuntime::getPropertyNames(const facebook::jsi::Object &obj) {
     duk_put_prop_index(ctx, arr_index, i);
   }
   duk_pop_2(ctx);
-  return topOfStackToValue(ctx).getObject(*this).getArray(*this);
+  return topOfStackToValue().getObject(*this).getArray(*this);
 }
 
 facebook::jsi::Array DuktapeRuntime::createArray(size_t length) {
@@ -300,7 +300,7 @@ facebook::jsi::Array DuktapeRuntime::createArray(size_t length) {
     duk_push_undefined(ctx);
     duk_put_prop_index(ctx, arr_index, i);
   }
-  return topOfStackToValue(ctx).getObject(*this).getArray(*this);
+  return topOfStackToValue().getObject(*this).getArray(*this);
 }
 
 size_t DuktapeRuntime::size(const facebook::jsi::Array &arr) {
@@ -315,7 +315,7 @@ DuktapeRuntime::getValueAtIndex(const facebook::jsi::Array &ary, size_t i) {
   duk_push_heapptr(ctx, DuktapeObject::get(ary));
   duk_push_number(ctx, i);
   duk_get_prop(ctx, -2);
-  auto result = this->topOfStackToValue(ctx);
+  auto result = this->topOfStackToValue();
   duk_pop_2(ctx);
   return result;
 }
@@ -361,15 +361,14 @@ facebook::jsi::Value DuktapeRuntime::call(const facebook::jsi::Function &func,
   if (err) {
     throw facebook::jsi::JSError(*this, duk_safe_to_string(ctx, -1));
   }
-  return topOfStackToValue(ctx);
+  return topOfStackToValue();
 }
 
-facebook::jsi::Value DuktapeRuntime::topOfStackToValue(duk_context *ctx) {
-  return stackToValue(ctx, -1);
+facebook::jsi::Value DuktapeRuntime::topOfStackToValue() {
+  return stackToValue(-1);
 }
 
-facebook::jsi::Value DuktapeRuntime::stackToValue(duk_context *ctx,
-                                                  int stack_index) {
+facebook::jsi::Value DuktapeRuntime::stackToValue(int stack_index) {
   if (duk_is_number(ctx, stack_index)) {
     return facebook::jsi::Value(duk_get_number(ctx, stack_index));
   } else if (duk_is_boolean(ctx, stack_index)) {
@@ -410,18 +409,17 @@ duk_ret_t DuktapeRuntime::dukHostObjectProxyFunction(std::string trap,
 
   auto proxyPointer = duk_get_heapptr(ctx, -1);
   assert(hostObjects->find(proxyPointer) != hostObjects->end());
-
-  for (int i = 0; i < n; ++i) {
-    size_t stackIndex = duk_normalize_index(ctx, i - n);
-    args.push_back(DuktapeRuntime::stackToValue(ctx, stackIndex));
-  }
-
   auto hostObj = hostObjects->at(proxyPointer);
   assert(hostObj != nullptr);
   auto dt = hostObj->rt;
   assert(dt != nullptr);
   auto ho = hostObj->ho;
   assert(ho != nullptr);
+
+  for (int i = 0; i < n; ++i) {
+    size_t stackIndex = duk_normalize_index(ctx, i - n);
+    args.push_back(dt->stackToValue(stackIndex));
+  }
 
   if (trap == "ownKeys") {
     auto names = ho->getPropertyNames(*dt);
@@ -479,17 +477,17 @@ duk_ret_t DuktapeRuntime::dukProxyFunction(duk_context *ctx) {
   int n = duk_get_top(ctx);
   std::vector<facebook::jsi::Value> args;
 
-  for (int i = 0; i < n; ++i) {
-    size_t stackIndex = duk_normalize_index(ctx, i - n);
-    args.push_back(DuktapeRuntime::stackToValue(ctx, stackIndex));
-  }
-
   duk_push_current_function(ctx);
   auto hostFunc = hostFunctions->at(duk_get_heapptr(ctx, -1));
   duk_pop(ctx);
-
   auto dt = hostFunc->rt;
   auto func = hostFunc->func;
+
+  for (int i = 0; i < n; ++i) {
+    size_t stackIndex = duk_normalize_index(ctx, i - n);
+    args.push_back(dt->stackToValue(stackIndex));
+  }
+
   auto result = func(*dt, facebook::jsi::Value(), args.data(), n);
   dt->pushValueToStack(result);
   return 1;
