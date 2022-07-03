@@ -271,6 +271,11 @@ private:
   using DuktapeFunction = DuktapePointer<const facebook::jsi::Function>;
   using DuktapePropNameID = DuktapePointer<const facebook::jsi::PropNameID>;
 
+  template <typename T> T wrap(int stackIndex = -1) {
+    auto idx = duk_normalize_index(ctx, stackIndex);
+    return T(duk_get_heapptr(ctx, idx));
+  }
+
   void dukPushJsiValue(duk_context *ctx, const facebook::jsi::Value &value) {
     if (value.isUndefined()) {
       duk_push_undefined(ctx);
