@@ -289,8 +289,8 @@ DuktapeRuntime::getPropertyNames(const facebook::jsi::Object &obj) {
   for (unsigned int i = 0; duk_next(ctx, enum_index, 0); i++) {
     duk_put_prop_index(ctx, arr_index, i);
   }
-  duk_pop(ctx);
-  return stackToValue(ctx, arr_index).getObject(*this).getArray(*this);
+  duk_pop_2(ctx);
+  return topOfStackToValue(ctx).getObject(*this).getArray(*this);
 }
 
 facebook::jsi::Array DuktapeRuntime::createArray(size_t length) {
@@ -412,10 +412,8 @@ duk_ret_t DuktapeRuntime::dukHostObjectProxyFunction(std::string trap,
   assert(hostObjects->find(proxyPointer) != hostObjects->end());
 
   for (int i = 0; i < n; ++i) {
-    args.push_back(DuktapeRuntime::stackToValue(ctx, i - n));
-  }
-  for (int i = 0; i < n; ++i) {
-    duk_pop(ctx);
+    size_t stackIndex = duk_normalize_index(ctx, i - n);
+    args.push_back(DuktapeRuntime::stackToValue(ctx, stackIndex));
   }
 
   auto hostObj = hostObjects->at(proxyPointer);
@@ -482,10 +480,8 @@ duk_ret_t DuktapeRuntime::dukProxyFunction(duk_context *ctx) {
   std::vector<facebook::jsi::Value> args;
 
   for (int i = 0; i < n; ++i) {
-    args.push_back(DuktapeRuntime::stackToValue(ctx, i - n));
-  }
-  for (int i = 0; i < n; ++i) {
-    duk_pop(ctx);
+    size_t stackIndex = duk_normalize_index(ctx, i - n);
+    args.push_back(DuktapeRuntime::stackToValue(ctx, stackIndex));
   }
 
   duk_push_current_function(ctx);
