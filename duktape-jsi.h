@@ -7,24 +7,24 @@
 
 namespace DuktapeJSI {
 
-class DuktapeRuntime : public facebook::jsi::Runtime {
+using namespace facebook;
+
+class DuktapeRuntime : public jsi::Runtime {
 public:
   DuktapeRuntime();
   ~DuktapeRuntime();
 
-  facebook::jsi::Value
-  evaluateJavaScript(const std::shared_ptr<const facebook::jsi::Buffer> &,
-                     const std::string &) override;
+  jsi::Value evaluateJavaScript(const std::shared_ptr<const jsi::Buffer> &,
+                                const std::string &) override;
 
-  std::shared_ptr<const facebook::jsi::PreparedJavaScript>
-  prepareJavaScript(const std::shared_ptr<const facebook::jsi::Buffer> &buffer,
+  std::shared_ptr<const jsi::PreparedJavaScript>
+  prepareJavaScript(const std::shared_ptr<const jsi::Buffer> &buffer,
                     std::string sourceURL) override {
     throw std::logic_error("prepareJavaScript: unimplemented method");
   }
 
-  facebook::jsi::Value evaluatePreparedJavaScript(
-      const std::shared_ptr<const facebook::jsi::PreparedJavaScript> &js)
-      override {
+  jsi::Value evaluatePreparedJavaScript(
+      const std::shared_ptr<const jsi::PreparedJavaScript> &js) override {
     throw std::logic_error("evaluatePreparedJavaScript: unimplemented method");
   }
 
@@ -32,173 +32,150 @@ public:
     throw std::logic_error("drainMicrotasks: unimplemented method");
   }
 
-  facebook::jsi::Object global() override;
+  jsi::Object global() override;
 
   std::string description() override;
 
   bool isInspectable() override;
 
-  facebook::jsi::Instrumentation &instrumentation() override {
+  jsi::Instrumentation &instrumentation() override {
     throw std::logic_error("instrumentation: unimplemented method");
   }
 
-  facebook::jsi::Runtime::PointerValue *
-  cloneSymbol(const facebook::jsi::Runtime::PointerValue *pv) override;
+  jsi::Runtime::PointerValue *
+  cloneSymbol(const jsi::Runtime::PointerValue *pv) override;
 
-  facebook::jsi::Runtime::PointerValue *
-  cloneString(const facebook::jsi::Runtime::PointerValue *pv) override;
+  jsi::Runtime::PointerValue *
+  cloneString(const jsi::Runtime::PointerValue *pv) override;
 
-  facebook::jsi::Runtime::PointerValue *
-  cloneObject(const facebook::jsi::Runtime::PointerValue *pv) override;
+  jsi::Runtime::PointerValue *
+  cloneObject(const jsi::Runtime::PointerValue *pv) override;
 
-  facebook::jsi::Runtime::PointerValue *
-  clonePropNameID(const facebook::jsi::Runtime::PointerValue *pv) override;
+  jsi::Runtime::PointerValue *
+  clonePropNameID(const jsi::Runtime::PointerValue *pv) override;
 
-  facebook::jsi::PropNameID createPropNameIDFromAscii(const char *str,
-                                                      size_t l) override;
+  jsi::PropNameID createPropNameIDFromAscii(const char *str, size_t l) override;
 
-  facebook::jsi::PropNameID createPropNameIDFromUtf8(const uint8_t *utf8,
-                                                     size_t length) override;
+  jsi::PropNameID createPropNameIDFromUtf8(const uint8_t *utf8,
+                                           size_t length) override;
 
-  facebook::jsi::PropNameID
-  createPropNameIDFromString(const facebook::jsi::String &str) override;
+  jsi::PropNameID createPropNameIDFromString(const jsi::String &str) override;
 
-  facebook::jsi::PropNameID
-  createPropNameIDFromSymbol(const facebook::jsi::Symbol &sym) override {
+  jsi::PropNameID createPropNameIDFromSymbol(const jsi::Symbol &sym) override {
     throw std::logic_error("createPropNameIDFromSymbol: unimplemented method");
   }
 
-  std::string utf8(const facebook::jsi::PropNameID &) override;
+  std::string utf8(const jsi::PropNameID &) override;
 
-  bool compare(const facebook::jsi::PropNameID &,
-               const facebook::jsi::PropNameID &) override;
+  bool compare(const jsi::PropNameID &, const jsi::PropNameID &) override;
 
-  std::string symbolToString(const facebook::jsi::Symbol &) override {
+  std::string symbolToString(const jsi::Symbol &) override {
     throw std::logic_error("symbolToString: unimplemented method");
   }
 
-  facebook::jsi::String createStringFromAscii(const char *str,
-                                              size_t length) override;
+  jsi::String createStringFromAscii(const char *str, size_t length) override;
 
-  facebook::jsi::String createStringFromUtf8(const uint8_t *utf8,
-                                             size_t length) override;
+  jsi::String createStringFromUtf8(const uint8_t *utf8, size_t length) override;
 
-  std::string utf8(const facebook::jsi::String &str) override;
+  std::string utf8(const jsi::String &str) override;
 
-  facebook::jsi::Object createObject() override;
+  jsi::Object createObject() override;
 
-  facebook::jsi::Object
-      createObject(std::shared_ptr<facebook::jsi::HostObject>) override;
+  jsi::Object createObject(std::shared_ptr<jsi::HostObject>) override;
 
-  std::shared_ptr<facebook::jsi::HostObject>
-  getHostObject(const facebook::jsi::Object &obj) override;
+  std::shared_ptr<jsi::HostObject>
+  getHostObject(const jsi::Object &obj) override;
 
-  facebook::jsi::HostFunctionType &
-  getHostFunction(const facebook::jsi::Function &) override;
+  jsi::HostFunctionType &getHostFunction(const jsi::Function &) override;
 
-  facebook::jsi::Value
-  getProperty(const facebook::jsi::Object &obj,
-              const facebook::jsi::PropNameID &name) override;
+  jsi::Value getProperty(const jsi::Object &obj,
+                         const jsi::PropNameID &name) override;
 
-  facebook::jsi::Value getProperty(const facebook::jsi::Object &,
-                                   const facebook::jsi::String &) override;
+  jsi::Value getProperty(const jsi::Object &, const jsi::String &) override;
 
-  bool hasProperty(const facebook::jsi::Object &,
-                   const facebook::jsi::PropNameID &name) override;
+  bool hasProperty(const jsi::Object &, const jsi::PropNameID &name) override;
 
-  bool hasProperty(const facebook::jsi::Object &,
-                   const facebook::jsi::String &name) override;
+  bool hasProperty(const jsi::Object &, const jsi::String &name) override;
 
-  void setPropertyValue(facebook::jsi::Object &obj,
-                        const facebook::jsi::PropNameID &name,
-                        const facebook::jsi::Value &value) override;
+  void setPropertyValue(jsi::Object &obj, const jsi::PropNameID &name,
+                        const jsi::Value &value) override;
 
-  void setPropertyValue(facebook::jsi::Object &obj,
-                        const facebook::jsi::String &key,
-                        const facebook::jsi::Value &value) override;
+  void setPropertyValue(jsi::Object &obj, const jsi::String &key,
+                        const jsi::Value &value) override;
 
-  bool isArray(const facebook::jsi::Object &obj) const override;
+  bool isArray(const jsi::Object &obj) const override;
 
-  bool isArrayBuffer(const facebook::jsi::Object &) const override {
+  bool isArrayBuffer(const jsi::Object &) const override {
     throw std::logic_error("isArrayBuffer: unimplemented method");
   }
 
-  bool isFunction(const facebook::jsi::Object &) const override;
+  bool isFunction(const jsi::Object &) const override;
 
-  bool isHostObject(const facebook::jsi::Object &obj) const override {
+  bool isHostObject(const jsi::Object &obj) const override {
     return hostObjects->find(ptr(obj)) != hostObjects->end();
   }
 
-  bool isHostFunction(const facebook::jsi::Function &func) const override;
+  bool isHostFunction(const jsi::Function &func) const override;
 
-  facebook::jsi::Array getPropertyNames(const facebook::jsi::Object &) override;
+  jsi::Array getPropertyNames(const jsi::Object &) override;
 
-  facebook::jsi::WeakObject
-  createWeakObject(const facebook::jsi::Object &) override {
+  jsi::WeakObject createWeakObject(const jsi::Object &) override {
     throw std::logic_error("createWeakObject: unimplemented method");
   }
 
-  facebook::jsi::Value lockWeakObject(facebook::jsi::WeakObject &) override {
+  jsi::Value lockWeakObject(jsi::WeakObject &) override {
     throw std::logic_error("lockWeakObject: unimplemented method");
   }
 
-  facebook::jsi::Array createArray(size_t length) override;
+  jsi::Array createArray(size_t length) override;
 
-  size_t size(const facebook::jsi::Array &) override;
+  size_t size(const jsi::Array &) override;
 
-  size_t size(const facebook::jsi::ArrayBuffer &) override {
+  size_t size(const jsi::ArrayBuffer &) override {
     throw std::logic_error("size: unimplemented method");
   }
 
-  uint8_t *data(const facebook::jsi::ArrayBuffer &) override {
+  uint8_t *data(const jsi::ArrayBuffer &) override {
     throw std::logic_error("data: unimplemented method");
   }
 
-  facebook::jsi::Value getValueAtIndex(const facebook::jsi::Array &ary,
-                                       size_t i) override;
+  jsi::Value getValueAtIndex(const jsi::Array &ary, size_t i) override;
 
-  void setValueAtIndexImpl(facebook::jsi::Array &ary, size_t i,
-                           const facebook::jsi::Value &value) override;
+  void setValueAtIndexImpl(jsi::Array &ary, size_t i,
+                           const jsi::Value &value) override;
 
-  facebook::jsi::Function
-  createFunctionFromHostFunction(const facebook::jsi::PropNameID &,
-                                 unsigned int,
-                                 facebook::jsi::HostFunctionType) override;
+  jsi::Function createFunctionFromHostFunction(const jsi::PropNameID &,
+                                               unsigned int,
+                                               jsi::HostFunctionType) override;
 
-  facebook::jsi::Value call(const facebook::jsi::Function &,
-                            const facebook::jsi::Value &,
-                            const facebook::jsi::Value *, size_t) override;
+  jsi::Value call(const jsi::Function &, const jsi::Value &, const jsi::Value *,
+                  size_t) override;
 
-  facebook::jsi::Value callAsConstructor(const facebook::jsi::Function &,
-                                         const facebook::jsi::Value *args,
-                                         size_t count) override {
+  jsi::Value callAsConstructor(const jsi::Function &, const jsi::Value *args,
+                               size_t count) override {
     throw std::logic_error("callAsConstructor: unimplemented method");
   }
 
-  bool strictEquals(const facebook::jsi::Symbol &a,
-                    const facebook::jsi::Symbol &b) const override {
+  bool strictEquals(const jsi::Symbol &a, const jsi::Symbol &b) const override {
     throw std::logic_error("strictEquals: unimplemented method");
   }
 
-  bool strictEquals(const facebook::jsi::String &a,
-                    const facebook::jsi::String &b) const override {
+  bool strictEquals(const jsi::String &a, const jsi::String &b) const override {
     throw std::logic_error("strictEquals: unimplemented method");
   }
 
-  bool strictEquals(const facebook::jsi::Object &a,
-                    const facebook::jsi::Object &b) const override {
+  bool strictEquals(const jsi::Object &a, const jsi::Object &b) const override {
     throw std::logic_error("strictEquals: unimplemented method");
   }
 
-  bool instanceOf(const facebook::jsi::Object &o,
-                  const facebook::jsi::Function &f) override {
+  bool instanceOf(const jsi::Object &o, const jsi::Function &f) override {
     throw std::logic_error("instanceOf: unimplemented method");
   }
 
 private:
   duk_context *ctx;
-  facebook::jsi::Value stackToValue(int stack_index);
-  facebook::jsi::Value topOfStackToValue();
+  jsi::Value stackToValue(int stack_index);
+  jsi::Value topOfStackToValue();
   static duk_ret_t hostFunctionProxy(duk_context *ctx);
   static duk_ret_t hostObjectProxy(std::string trap, duk_context *ctx);
   static duk_ret_t hostObjectGetProxy(duk_context *ctx);
@@ -206,20 +183,18 @@ private:
   static duk_ret_t hostObjectOwnKeysProxy(duk_context *ctx);
 
   struct DuktapeHostFunction {
-    DuktapeHostFunction(DuktapeRuntime *rt,
-                        facebook::jsi::HostFunctionType func)
+    DuktapeHostFunction(DuktapeRuntime *rt, jsi::HostFunctionType func)
         : rt(rt), func(func){};
     DuktapeRuntime *rt;
-    facebook::jsi::HostFunctionType func;
+    jsi::HostFunctionType func;
   };
 
   struct DuktapeHostObject {
     DuktapeHostObject(DuktapeHostObject &) = delete;
-    DuktapeHostObject(DuktapeRuntime *rt,
-                      std::shared_ptr<facebook::jsi::HostObject> ho)
+    DuktapeHostObject(DuktapeRuntime *rt, std::shared_ptr<jsi::HostObject> ho)
         : rt(rt), ho(ho){};
     DuktapeRuntime *rt;
-    std::shared_ptr<facebook::jsi::HostObject> ho;
+    std::shared_ptr<jsi::HostObject> ho;
   };
 
   using HostFunctionMapType =
@@ -230,13 +205,13 @@ private:
       std::map<void *, std::shared_ptr<DuktapeRuntime::DuktapeHostObject>>;
   static HostObjectMapType *hostObjects;
 
-  struct DuktapePointerValue : public facebook::jsi::Runtime::PointerValue {
+  struct DuktapePointerValue : public jsi::Runtime::PointerValue {
     DuktapePointerValue(duk_context *ctx, int stackIndex)
         : dukPtr_(duk_get_heapptr(ctx, stackIndex)), ctx_(ctx),
           stackIndex_(stackIndex){};
 
-    static facebook::jsi::Runtime::PointerValue *
-    clone(const facebook::jsi::Runtime::PointerValue *pv) {
+    static jsi::Runtime::PointerValue *
+    clone(const jsi::Runtime::PointerValue *pv) {
       return new DuktapePointerValue(
           *(static_cast<const DuktapePointerValue *>(pv)));
     }
@@ -273,27 +248,23 @@ private:
     }
   };
 
-  using DuktapeObject = DuktapeWrapper<const facebook::jsi::Object>;
-  using DuktapeSymbol = DuktapeWrapper<const facebook::jsi::Symbol>;
-  using DuktapeString = DuktapeWrapper<const facebook::jsi::String>;
-  using DuktapeFunction = DuktapeWrapper<const facebook::jsi::Function>;
-  using DuktapePropNameID = DuktapeWrapper<const facebook::jsi::PropNameID>;
-  using DuktapePointer = DuktapeWrapper<const facebook::jsi::Pointer>;
+  using DuktapeObject = DuktapeWrapper<const jsi::Object>;
+  using DuktapeSymbol = DuktapeWrapper<const jsi::Symbol>;
+  using DuktapeString = DuktapeWrapper<const jsi::String>;
+  using DuktapeFunction = DuktapeWrapper<const jsi::Function>;
+  using DuktapePropNameID = DuktapeWrapper<const jsi::PropNameID>;
+  using DuktapePointer = DuktapeWrapper<const jsi::Pointer>;
 
   template <typename T> T wrap(int stackIndex = -1) {
     auto idx = duk_normalize_index(ctx, stackIndex);
     return T(ctx, idx);
   }
 
-  void *ptr(const facebook::jsi::Pointer &p) const {
-    return DuktapePointer::ptr(p);
-  }
+  void *ptr(const jsi::Pointer &p) const { return DuktapePointer::ptr(p); }
 
-  size_t idx(const facebook::jsi::Pointer &p) const {
-    return DuktapePointer::idx(p);
-  }
+  size_t idx(const jsi::Pointer &p) const { return DuktapePointer::idx(p); }
 
-  void dukPushJsiValue(const facebook::jsi::Value &value) {
+  void dukPushJsiValue(const jsi::Value &value) {
     if (value.isUndefined()) {
       duk_push_undefined(ctx);
     } else if (value.isNull()) {
