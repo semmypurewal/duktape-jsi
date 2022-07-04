@@ -124,7 +124,7 @@ public:
   bool isFunction(const facebook::jsi::Object &) const override;
 
   bool isHostObject(const facebook::jsi::Object &obj) const override {
-    return hostObjects->find(DuktapeObject::get(obj)) != hostObjects->end();
+    return hostObjects->find(DuktapeObject::ptr(obj)) != hostObjects->end();
   }
 
   bool isHostFunction(const facebook::jsi::Function &func) const override;
@@ -231,36 +231,49 @@ private:
   static HostObjectMapType *hostObjects;
 
   struct DuktapePointerValue : public facebook::jsi::Runtime::PointerValue {
-    DuktapePointerValue(void *ptr)
-        : duk_ptr_(ptr){
-              // hide this object from garbage collection
-          };
+    DuktapePointerValue(void *ptr, duk_context *ctx, int stackIndex)
+        : dukPtr_(ptr), ctx_(ctx), stackIndex_(stackIndex){};
+
+    DuktapePointerValue(const DuktapePointerValue &other) {
+      dukPtr_ = other.dukPtr_;
+      ctx_ = other.ctx_;
+      stackIndex_ = other.stackIndex_;
+    }
+
     static facebook::jsi::Runtime::PointerValue *
     clone(const facebook::jsi::Runtime::PointerValue *pv) {
       return new DuktapePointerValue(
-          static_cast<const DuktapePointerValue *>(pv)->duk_ptr_);
+          *(static_cast<const DuktapePointerValue *>(pv)));
     }
-    void invalidate() override{
-        // release this object for garbage collection
-    };
-    void *duk_ptr_;
+    void invalidate() override{};
+    void *dukPtr_;
+    duk_context *ctx_;
+    size_t stackIndex_;
   };
 
   template <typename T> class DuktapePointer : public T {
   public:
-    DuktapePointer<T>(void *ptr) : T(new DuktapePointerValue(ptr)){};
+    DuktapePointer<T>(void *ptr, duk_context *ctx, int stackIndex)
+        : T(new DuktapePointerValue(ptr, ctx, stackIndex)){};
     DuktapePointer<T>(T &&other) : T(std::move(other)){};
 
-    static void *get(T &obj) {
+    static void *ptr(T &obj) {
       return static_cast<const DuktapePointer<T> &>(obj).getDukHeapPtr();
     }
 
-    void *get() { return DuktapePointer<T>::get(this); }
+    static size_t idx(T &obj) {
+      return static_cast<const DuktapePointer<T> &>(obj).getStackIndex();
+    }
 
   private:
+    size_t getStackIndex() const {
+      DuktapePointerValue *dtv = (DuktapePointerValue *)this->ptr_;
+      return dtv->stackIndex_;
+    }
+
     void *getDukHeapPtr() const {
       DuktapePointerValue *dtv = (DuktapePointerValue *)this->ptr_;
-      void *duk_heap_ptr = dtv->duk_ptr_;
+      void *duk_heap_ptr = dtv->dukPtr_;
       return duk_heap_ptr;
     }
   };
@@ -273,7 +286,7 @@ private:
 
   template <typename T> T wrap(int stackIndex = -1) {
     auto idx = duk_normalize_index(ctx, stackIndex);
-    return T(duk_get_heapptr(ctx, idx));
+    return T(duk_get_heapptr(ctx, idx), ctx, idx);
   }
 
   void dukPushJsiValue(duk_context *ctx, const facebook::jsi::Value &value) {
@@ -297,7 +310,7 @@ private:
   }
 
   template <typename T> void dukPushJsiPtrValue(duk_context *ctx, T &&value) {
-    duk_push_heapptr(ctx, DuktapePointer<T>::get(value));
+    duk_push_heapptr(ctx, DuktapePointer<T>::ptr(value));
   }
 
   void dukPushUtf8String(const std::string &utf8) {
