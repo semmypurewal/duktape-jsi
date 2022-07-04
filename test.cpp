@@ -278,7 +278,7 @@ TEST_F(DuktapeRuntimeTest, Utf8ToCesu8Test) {
   x.setProperty(*dt, facebook::jsi::PropNameID::forString(*dt, okPropName),
                 "emoji1");
 
-  EXPECT_EQ(x.getPropertyNames(*dt).size(*dt), 1);
+  EXPECT_EQ(x.getPropertyNames(*dt).size(*dt), 1u);
   EXPECT_TRUE(eval.call(*dt, "x['\\uD83C\\uDD97'] == 'emoji1'").getBool());
 
   uint8_t thumbsUpUtf8[] = {0xF0, 0x9F, 0x91, 0x8D};
@@ -288,7 +288,7 @@ TEST_F(DuktapeRuntimeTest, Utf8ToCesu8Test) {
                 facebook::jsi::PropNameID::forString(*dt, thumbsUpPropName),
                 "emoji2");
 
-  EXPECT_EQ(x.getPropertyNames(*dt).size(*dt), 2);
+  EXPECT_EQ(x.getPropertyNames(*dt).size(*dt), 2u);
   EXPECT_TRUE(eval.call(*dt, "x['\\uD83D\\uDC4D'] == 'emoji2'").getBool());
 
   uint8_t thumbsDownUtf8[] = {0xF0, 0x9F, 0x91, 0x8E};
@@ -298,7 +298,7 @@ TEST_F(DuktapeRuntimeTest, Utf8ToCesu8Test) {
                 facebook::jsi::PropNameID::forString(*dt, thumbsDownPropName),
                 "emoji3");
 
-  EXPECT_EQ(x.getPropertyNames(*dt).size(*dt), 3);
+  EXPECT_EQ(x.getPropertyNames(*dt).size(*dt), 3u);
   EXPECT_TRUE(eval.call(*dt, "x['\\uD83D\\uDC4E'] == 'emoji3'").getBool());
 }
 
