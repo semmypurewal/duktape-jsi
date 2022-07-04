@@ -229,14 +229,9 @@ private:
   static HostObjectMapType *hostObjects;
 
   struct DuktapePointerValue : public facebook::jsi::Runtime::PointerValue {
-    DuktapePointerValue(void *ptr, duk_context *ctx, int stackIndex)
-        : dukPtr_(ptr), ctx_(ctx), stackIndex_(stackIndex){};
-
-    DuktapePointerValue(const DuktapePointerValue &other) {
-      dukPtr_ = other.dukPtr_;
-      ctx_ = other.ctx_;
-      stackIndex_ = other.stackIndex_;
-    }
+    DuktapePointerValue(duk_context *ctx, int stackIndex)
+        : dukPtr_(duk_get_heapptr(ctx, stackIndex)), ctx_(ctx),
+          stackIndex_(stackIndex){};
 
     static facebook::jsi::Runtime::PointerValue *
     clone(const facebook::jsi::Runtime::PointerValue *pv) {
@@ -251,8 +246,8 @@ private:
 
   template <typename T> class DuktapeWrapper : public T {
   public:
-    DuktapeWrapper<T>(void *ptr, duk_context *ctx, int stackIndex)
-        : T(new DuktapePointerValue(ptr, ctx, stackIndex)){};
+    DuktapeWrapper<T>(duk_context *ctx, int stackIndex)
+        : T(new DuktapePointerValue(ctx, stackIndex)){};
     DuktapeWrapper<T>(T &&other) : T(std::move(other)){};
 
     static void *ptr(T &obj) {
@@ -285,7 +280,7 @@ private:
 
   template <typename T> T wrap(int stackIndex = -1) {
     auto idx = duk_normalize_index(ctx, stackIndex);
-    return T(duk_get_heapptr(ctx, idx), ctx, idx);
+    return T(ctx, idx);
   }
 
   void *ptr(const facebook::jsi::Pointer &p) const {
