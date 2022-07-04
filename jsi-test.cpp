@@ -5,6 +5,8 @@
 using ::testing::InitGoogleTest;
 using ::testing::Test;
 
+using namespace DuktapeJSI;
+
 namespace facebook {
 namespace jsi {
 

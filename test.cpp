@@ -4,6 +4,8 @@
 using ::testing::InitGoogleTest;
 using ::testing::Test;
 
+using namespace DuktapeJSI;
+
 facebook::jsi::Function function(facebook::jsi::Runtime &rt,
                                  const std::string &code) {
   auto eval = rt.global().getPropertyAsFunction(rt, "eval");

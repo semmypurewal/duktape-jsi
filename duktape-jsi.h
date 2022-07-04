@@ -5,6 +5,8 @@
 #include <iostream>
 #include <map>
 
+namespace DuktapeJSI {
+
 class DuktapeRuntime : public facebook::jsi::Runtime {
 public:
   DuktapeRuntime();
@@ -329,3 +331,4 @@ private:
     return result;
   }
 };
+} // namespace DuktapeJSI

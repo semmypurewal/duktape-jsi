@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cassert>
 
-using namespace facebook;
+namespace DuktapeJSI {
 
 DuktapeRuntime::HostFunctionMapType *DuktapeRuntime::hostFunctions =
     new HostFunctionMapType;
@@ -427,3 +427,4 @@ duk_ret_t DuktapeRuntime::hostFunctionProxy(duk_context *ctx) {
   dt->dukPushJsiValue(result);
   return 1;
 }
+} // namespace DuktapeJSI
