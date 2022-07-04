@@ -197,13 +197,11 @@ private:
   duk_context *ctx;
   facebook::jsi::Value stackToValue(int stack_index);
   facebook::jsi::Value topOfStackToValue();
-  static duk_ret_t dukProxyFunction(duk_context *ctx);
-  static duk_ret_t dukHostObjectProxyFunction(std::string trap,
-                                              duk_context *ctx);
-  static duk_ret_t dukHostObjectGetProxyFunction(duk_context *ctx);
-  static duk_ret_t dukHostObjectSetProxyFunction(duk_context *ctx);
-  static duk_ret_t dukHostObjectOwnKeysProxyFunction(duk_context *ctx);
-  void pushValueToStack(const facebook::jsi::Value &v);
+  static duk_ret_t hostFunctionProxy(duk_context *ctx);
+  static duk_ret_t hostObjectProxy(std::string trap, duk_context *ctx);
+  static duk_ret_t hostObjectGetProxy(duk_context *ctx);
+  static duk_ret_t hostObjectSetProxy(duk_context *ctx);
+  static duk_ret_t hostObjectOwnKeysProxy(duk_context *ctx);
 
   struct DuktapeHostFunction {
     DuktapeHostFunction(DuktapeRuntime *rt,
@@ -298,7 +296,7 @@ private:
     return DuktapePointer::idx(p);
   }
 
-  void dukPushJsiValue(duk_context *ctx, const facebook::jsi::Value &value) {
+  void dukPushJsiValue(const facebook::jsi::Value &value) {
     if (value.isUndefined()) {
       duk_push_undefined(ctx);
     } else if (value.isNull()) {

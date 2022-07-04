@@ -130,11 +130,11 @@ DuktapeRuntime::createObject(std::shared_ptr<facebook::jsi::HostObject> ho) {
   duk_push_object(ctx); // target
   auto targetHeapPtr = duk_get_heapptr(ctx, -1);
   duk_push_object(ctx); // handler
-  duk_push_c_function(ctx, dukHostObjectGetProxyFunction, 3);
+  duk_push_c_function(ctx, hostObjectGetProxy, 3);
   duk_put_prop_string(ctx, -2, "get");
-  duk_push_c_function(ctx, dukHostObjectSetProxyFunction, 4);
+  duk_push_c_function(ctx, hostObjectSetProxy, 4);
   duk_put_prop_string(ctx, -2, "set");
-  duk_push_c_function(ctx, dukHostObjectOwnKeysProxyFunction, 1);
+  duk_push_c_function(ctx, hostObjectOwnKeysProxy, 1);
   duk_put_prop_string(ctx, -2, "ownKeys");
 
   duk_push_proxy(ctx, 0);
@@ -205,7 +205,7 @@ void DuktapeRuntime::setPropertyValue(facebook::jsi::Object &obj,
   size_t objIndex = idx(obj);
   assert(duk_is_object(ctx, objIndex));
   duk_dup(ctx, idx(name));
-  dukPushJsiValue(ctx, value);
+  dukPushJsiValue(value);
   duk_put_prop(ctx, objIndex);
 }
 
@@ -215,7 +215,7 @@ void DuktapeRuntime::setPropertyValue(facebook::jsi::Object &obj,
   int objIndex = idx(obj);
   assert(duk_is_object(ctx, objIndex));
   duk_dup(ctx, idx(key));
-  dukPushJsiValue(ctx, value);
+  dukPushJsiValue(value);
   duk_put_prop(ctx, objIndex);
 }
 
@@ -271,7 +271,7 @@ void DuktapeRuntime::setValueAtIndexImpl(facebook::jsi::Array &ary, size_t i,
   auto objIndex = idx(ary);
   assert(duk_is_object(ctx, objIndex));
   assert(duk_is_array(ctx, objIndex));
-  dukPushJsiValue(ctx, value);
+  dukPushJsiValue(value);
   duk_put_prop_index(ctx, objIndex, i);
 }
 
@@ -279,7 +279,7 @@ facebook::jsi::Function DuktapeRuntime::createFunctionFromHostFunction(
     const facebook::jsi::PropNameID &name, unsigned int paramCount,
     facebook::jsi::HostFunctionType func) {
   auto hf = std::make_shared<DuktapeHostFunction>(this, func);
-  duk_push_c_function(ctx, DuktapeRuntime::dukProxyFunction, DUK_VARARGS);
+  duk_push_c_function(ctx, DuktapeRuntime::hostFunctionProxy, DUK_VARARGS);
   assert(duk_is_object(ctx, -1));
   assert(duk_is_function(ctx, -1));
   auto funcPointer = duk_get_heapptr(ctx, -1);
@@ -292,9 +292,9 @@ facebook::jsi::Value DuktapeRuntime::call(const facebook::jsi::Function &func,
                                           const facebook::jsi::Value *args,
                                           size_t count) {
   dukPushJsiPtrValue(ctx, std::move(func));
-  dukPushJsiValue(ctx, std::move(jsThis));
+  dukPushJsiValue(std::move(jsThis));
   for (unsigned int i = 0; i < count; ++i) {
-    dukPushJsiValue(ctx, args[i]);
+    dukPushJsiValue(args[i]);
   }
   auto err = duk_pcall_method(ctx, count);
   if (err) {
@@ -326,20 +326,19 @@ facebook::jsi::Value DuktapeRuntime::stackToValue(int stack_index) {
   throw std::logic_error("unknown duktype");
 }
 
-duk_ret_t DuktapeRuntime::dukHostObjectGetProxyFunction(duk_context *ctx) {
-  return dukHostObjectProxyFunction(std::string("get"), ctx);
+duk_ret_t DuktapeRuntime::hostObjectGetProxy(duk_context *ctx) {
+  return hostObjectProxy(std::string("get"), ctx);
 }
 
-duk_ret_t DuktapeRuntime::dukHostObjectSetProxyFunction(duk_context *ctx) {
-  return dukHostObjectProxyFunction(std::string("set"), ctx);
+duk_ret_t DuktapeRuntime::hostObjectSetProxy(duk_context *ctx) {
+  return hostObjectProxy(std::string("set"), ctx);
 }
 
-duk_ret_t DuktapeRuntime::dukHostObjectOwnKeysProxyFunction(duk_context *ctx) {
-  return dukHostObjectProxyFunction(std::string("ownKeys"), ctx);
+duk_ret_t DuktapeRuntime::hostObjectOwnKeysProxy(duk_context *ctx) {
+  return hostObjectProxy(std::string("ownKeys"), ctx);
 }
 
-duk_ret_t DuktapeRuntime::dukHostObjectProxyFunction(std::string trap,
-                                                     duk_context *ctx) {
+duk_ret_t DuktapeRuntime::hostObjectProxy(std::string trap, duk_context *ctx) {
   int n = duk_get_top(ctx);
   std::vector<facebook::jsi::Value> args;
 
@@ -377,7 +376,7 @@ duk_ret_t DuktapeRuntime::dukHostObjectProxyFunction(std::string trap,
       result.setValueAtIndex(*dt, i, str);
     }
 
-    dt->pushValueToStack(std::move(result));
+    dt->dukPushJsiValue(std::move(result));
   } else {
     if (!args[1].isString()) {
       auto numString = std::to_string((int)args[1].getNumber());
@@ -391,14 +390,14 @@ duk_ret_t DuktapeRuntime::dukHostObjectProxyFunction(std::string trap,
     if (trap == "get") {
       try {
         auto result = ho->get(*dt, propName);
-        dt->pushValueToStack(result);
+        dt->dukPushJsiValue(result);
       } catch (std::exception &e) {
         throw facebook::jsi::JSError(*dt, e.what(), "");
       }
     } else if (trap == "set") {
       try {
         ho->set(*dt, propName, args[2]);
-        dt->pushValueToStack(args[2]);
+        dt->dukPushJsiValue(args[2]);
       } catch (std::exception &e) {
         throw facebook::jsi::JSError(*dt, e.what(), "");
       }
@@ -409,7 +408,7 @@ duk_ret_t DuktapeRuntime::dukHostObjectProxyFunction(std::string trap,
   return 1;
 }
 
-duk_ret_t DuktapeRuntime::dukProxyFunction(duk_context *ctx) {
+duk_ret_t DuktapeRuntime::hostFunctionProxy(duk_context *ctx) {
   int n = duk_get_top(ctx);
   std::vector<facebook::jsi::Value> args;
 
@@ -425,10 +424,6 @@ duk_ret_t DuktapeRuntime::dukProxyFunction(duk_context *ctx) {
   }
 
   auto result = func(*dt, facebook::jsi::Value(), args.data(), n);
-  dt->pushValueToStack(result);
+  dt->dukPushJsiValue(result);
   return 1;
-}
-
-void DuktapeRuntime::pushValueToStack(const facebook::jsi::Value &v) {
-  dukPushJsiValue(ctx, v);
 }
