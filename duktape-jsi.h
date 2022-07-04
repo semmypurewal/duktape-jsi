@@ -124,7 +124,7 @@ public:
   bool isFunction(const facebook::jsi::Object &) const override;
 
   bool isHostObject(const facebook::jsi::Object &obj) const override {
-    return hostObjects->find(DuktapeObject::ptr(obj)) != hostObjects->end();
+    return hostObjects->find(ptr(obj)) != hostObjects->end();
   }
 
   bool isHostFunction(const facebook::jsi::Function &func) const override;
@@ -251,18 +251,18 @@ private:
     size_t stackIndex_;
   };
 
-  template <typename T> class DuktapePointer : public T {
+  template <typename T> class DuktapeWrapper : public T {
   public:
-    DuktapePointer<T>(void *ptr, duk_context *ctx, int stackIndex)
+    DuktapeWrapper<T>(void *ptr, duk_context *ctx, int stackIndex)
         : T(new DuktapePointerValue(ptr, ctx, stackIndex)){};
-    DuktapePointer<T>(T &&other) : T(std::move(other)){};
+    DuktapeWrapper<T>(T &&other) : T(std::move(other)){};
 
     static void *ptr(T &obj) {
-      return static_cast<const DuktapePointer<T> &>(obj).getDukHeapPtr();
+      return static_cast<const DuktapeWrapper<T> &>(obj).getDukHeapPtr();
     }
 
     static size_t idx(T &obj) {
-      return static_cast<const DuktapePointer<T> &>(obj).getStackIndex();
+      return static_cast<const DuktapeWrapper<T> &>(obj).getStackIndex();
     }
 
   private:
@@ -278,15 +278,24 @@ private:
     }
   };
 
-  using DuktapeObject = DuktapePointer<const facebook::jsi::Object>;
-  using DuktapeSymbol = DuktapePointer<const facebook::jsi::Symbol>;
-  using DuktapeString = DuktapePointer<const facebook::jsi::String>;
-  using DuktapeFunction = DuktapePointer<const facebook::jsi::Function>;
-  using DuktapePropNameID = DuktapePointer<const facebook::jsi::PropNameID>;
+  using DuktapeObject = DuktapeWrapper<const facebook::jsi::Object>;
+  using DuktapeSymbol = DuktapeWrapper<const facebook::jsi::Symbol>;
+  using DuktapeString = DuktapeWrapper<const facebook::jsi::String>;
+  using DuktapeFunction = DuktapeWrapper<const facebook::jsi::Function>;
+  using DuktapePropNameID = DuktapeWrapper<const facebook::jsi::PropNameID>;
+  using DuktapePointer = DuktapeWrapper<const facebook::jsi::Pointer>;
 
   template <typename T> T wrap(int stackIndex = -1) {
     auto idx = duk_normalize_index(ctx, stackIndex);
     return T(duk_get_heapptr(ctx, idx), ctx, idx);
+  }
+
+  void *ptr(const facebook::jsi::Pointer &p) const {
+    return DuktapePointer::ptr(p);
+  }
+
+  size_t idx(const facebook::jsi::Pointer &p) const {
+    return DuktapePointer::idx(p);
   }
 
   void dukPushJsiValue(duk_context *ctx, const facebook::jsi::Value &value) {
@@ -310,7 +319,7 @@ private:
   }
 
   template <typename T> void dukPushJsiPtrValue(duk_context *ctx, T &&value) {
-    duk_push_heapptr(ctx, DuktapePointer<T>::ptr(value));
+    duk_push_heapptr(ctx, ptr(value));
   }
 
   void dukPushUtf8String(const std::string &utf8) {

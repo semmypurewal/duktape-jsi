@@ -82,7 +82,7 @@ DuktapeRuntime::createPropNameIDFromUtf8(const uint8_t *utf8, size_t length) {
 
 facebook::jsi::PropNameID
 DuktapeRuntime::createPropNameIDFromString(const facebook::jsi::String &str) {
-  duk_push_heapptr(ctx, DuktapeString::ptr(str));
+  duk_push_heapptr(ctx, ptr(str));
   return wrap<DuktapePropNameID>();
 }
 
@@ -151,15 +151,15 @@ DuktapeRuntime::createObject(std::shared_ptr<facebook::jsi::HostObject> ho) {
 std::shared_ptr<facebook::jsi::HostObject>
 DuktapeRuntime::getHostObject(const facebook::jsi::Object &obj) {
   assert(obj.isHostObject(*this));
-  return hostObjects->at(DuktapeObject::ptr(obj))->ho;
+  return hostObjects->at(ptr(obj))->ho;
 }
 
 std::string DuktapeRuntime::utf8(const facebook::jsi::String &str) {
-  return dukCopyStringAsUtf8(DuktapeString::idx(str));
+  return dukCopyStringAsUtf8(idx(str));
 }
 
 std::string DuktapeRuntime::utf8(const facebook::jsi::PropNameID &prop) {
-  return dukCopyStringAsUtf8(DuktapePropNameID::idx(prop));
+  return dukCopyStringAsUtf8(idx(prop));
 }
 
 bool DuktapeRuntime::compare(const facebook::jsi::PropNameID &a,
@@ -170,13 +170,13 @@ bool DuktapeRuntime::compare(const facebook::jsi::PropNameID &a,
 facebook::jsi::HostFunctionType &
 DuktapeRuntime::getHostFunction(const facebook::jsi::Function &func) {
   assert(func.isHostFunction(*this));
-  return hostFunctions->at(DuktapeObject::ptr(func))->func;
+  return hostFunctions->at(ptr(func))->func;
 }
 
 facebook::jsi::Value
 DuktapeRuntime::getProperty(const facebook::jsi::Object &obj,
                             const facebook::jsi::PropNameID &name) {
-  auto objIndex = DuktapeObject::idx(obj);
+  auto objIndex = idx(obj);
   duk_get_prop_string(ctx, objIndex, name.utf8(*this).c_str());
   return topOfStackToValue();
 }
@@ -184,29 +184,27 @@ DuktapeRuntime::getProperty(const facebook::jsi::Object &obj,
 facebook::jsi::Value
 DuktapeRuntime::getProperty(const facebook::jsi::Object &obj,
                             const facebook::jsi::String &name) {
-  auto objIndex = DuktapeObject::idx(obj);
+  auto objIndex = idx(obj);
   duk_get_prop_string(ctx, objIndex, name.utf8(*this).c_str());
   return topOfStackToValue();
 }
 
 bool DuktapeRuntime::hasProperty(const facebook::jsi::Object &obj,
                                  const facebook::jsi::PropNameID &name) {
-  return duk_has_prop_heapptr(ctx, DuktapeObject::idx(obj),
-                              DuktapePropNameID::ptr(name));
+  return duk_has_prop_heapptr(ctx, idx(obj), ptr(name));
 }
 
 bool DuktapeRuntime::hasProperty(const facebook::jsi::Object &obj,
                                  const facebook::jsi::String &name) {
-  return duk_has_prop_heapptr(ctx, DuktapeObject::idx(obj),
-                              DuktapeString::ptr(name));
+  return duk_has_prop_heapptr(ctx, idx(obj), ptr(name));
 }
 
 void DuktapeRuntime::setPropertyValue(facebook::jsi::Object &obj,
                                       const facebook::jsi::PropNameID &name,
                                       const facebook::jsi::Value &value) {
-  size_t objIndex = DuktapeObject::idx(obj);
+  size_t objIndex = idx(obj);
   assert(duk_is_object(ctx, objIndex));
-  duk_dup(ctx, DuktapePropNameID::idx(name));
+  duk_dup(ctx, idx(name));
   dukPushJsiValue(ctx, value);
   duk_put_prop(ctx, objIndex);
 }
@@ -214,30 +212,30 @@ void DuktapeRuntime::setPropertyValue(facebook::jsi::Object &obj,
 void DuktapeRuntime::setPropertyValue(facebook::jsi::Object &obj,
                                       const facebook::jsi::String &key,
                                       const facebook::jsi::Value &value) {
-  int objIndex = DuktapeObject::idx(obj);
+  int objIndex = idx(obj);
   assert(duk_is_object(ctx, objIndex));
-  duk_dup(ctx, DuktapeString::idx(key));
+  duk_dup(ctx, idx(key));
   dukPushJsiValue(ctx, value);
   duk_put_prop(ctx, objIndex);
 }
 
 bool DuktapeRuntime::isArray(const facebook::jsi::Object &obj) const {
-  return duk_is_array(ctx, DuktapeObject::idx(obj));
+  return duk_is_array(ctx, idx(obj));
 }
 
 bool DuktapeRuntime::isFunction(const facebook::jsi::Object &obj) const {
-  return duk_is_function(ctx, DuktapeObject::idx(obj));
+  return duk_is_function(ctx, idx(obj));
 }
 
 bool DuktapeRuntime::isHostFunction(const facebook::jsi::Function &func) const {
-  return hostFunctions->find(DuktapeObject::ptr(func)) != hostFunctions->end();
+  return hostFunctions->find(ptr(func)) != hostFunctions->end();
 }
 
 facebook::jsi::Array
 DuktapeRuntime::getPropertyNames(const facebook::jsi::Object &obj) {
   duk_push_array(ctx);
   auto arrIndex = duk_normalize_index(ctx, -1);
-  auto objIndex = DuktapeObject::idx(obj);
+  auto objIndex = idx(obj);
   duk_enum(ctx, objIndex, 0);
   auto enum_index = duk_normalize_index(ctx, -1);
   for (unsigned int i = 0; duk_next(ctx, enum_index, 0); i++) {
@@ -258,19 +256,19 @@ facebook::jsi::Array DuktapeRuntime::createArray(size_t length) {
 }
 
 size_t DuktapeRuntime::size(const facebook::jsi::Array &arr) {
-  return duk_get_length(ctx, DuktapeObject::idx(arr));
+  return duk_get_length(ctx, idx(arr));
 }
 
 facebook::jsi::Value
 DuktapeRuntime::getValueAtIndex(const facebook::jsi::Array &ary, size_t i) {
-  auto arrIndex = DuktapeObject::idx(ary);
+  auto arrIndex = idx(ary);
   duk_get_prop_index(ctx, arrIndex, i);
   return this->topOfStackToValue();
 }
 
 void DuktapeRuntime::setValueAtIndexImpl(facebook::jsi::Array &ary, size_t i,
                                          const facebook::jsi::Value &value) {
-  auto objIndex = DuktapeObject::idx(ary);
+  auto objIndex = idx(ary);
   assert(duk_is_object(ctx, objIndex));
   assert(duk_is_array(ctx, objIndex));
   dukPushJsiValue(ctx, value);
