@@ -248,21 +248,18 @@ private:
     }
   };
 
-  using DuktapeObject = DuktapeWrapper<const jsi::Object>;
-  using DuktapeSymbol = DuktapeWrapper<const jsi::Symbol>;
-  using DuktapeString = DuktapeWrapper<const jsi::String>;
-  using DuktapeFunction = DuktapeWrapper<const jsi::Function>;
-  using DuktapePropNameID = DuktapeWrapper<const jsi::PropNameID>;
-  using DuktapePointer = DuktapeWrapper<const jsi::Pointer>;
-
   template <typename T> T wrap(int stackIndex = -1) {
     auto idx = duk_normalize_index(ctx, stackIndex);
-    return T(ctx, idx);
+    return DuktapeWrapper<T>(ctx, idx);
   }
 
-  void *ptr(const jsi::Pointer &p) const { return DuktapePointer::ptr(p); }
+  void *ptr(const jsi::Pointer &p) const {
+    return DuktapeWrapper<const jsi::Pointer>::ptr(p);
+  }
 
-  size_t idx(const jsi::Pointer &p) const { return DuktapePointer::idx(p); }
+  size_t idx(const jsi::Pointer &p) const {
+    return DuktapeWrapper<const jsi::Pointer>::idx(p);
+  }
 
   void dukPushJsiValue(const jsi::Value &value) {
     if (value.isUndefined()) {

@@ -63,27 +63,27 @@ bool DuktapeRuntime::isInspectable() { return false; }
 
 jsi::Object DuktapeRuntime::global() {
   duk_push_global_object(ctx);
-  return wrap<DuktapeObject>();
+  return wrap<jsi::Object>();
 }
 
 jsi::PropNameID DuktapeRuntime::createPropNameIDFromAscii(const char *str,
                                                           size_t length) {
   std::string newStr(str, length);
   duk_push_string(ctx, newStr.c_str());
-  return wrap<DuktapePropNameID>();
+  return wrap<jsi::PropNameID>();
 }
 
 jsi::PropNameID DuktapeRuntime::createPropNameIDFromUtf8(const uint8_t *utf8,
                                                          size_t length) {
   std::string utf8Str((char *)utf8, length);
   dukPushUtf8String(std::string((const char *)utf8, length));
-  return wrap<DuktapePropNameID>();
+  return wrap<jsi::PropNameID>();
 }
 
 jsi::PropNameID
 DuktapeRuntime::createPropNameIDFromString(const jsi::String &str) {
   duk_push_heapptr(ctx, ptr(str));
-  return wrap<DuktapePropNameID>();
+  return wrap<jsi::PropNameID>();
 }
 
 jsi::Runtime::PointerValue *
@@ -110,19 +110,19 @@ jsi::String DuktapeRuntime::createStringFromAscii(const char *str,
                                                   size_t length) {
   std::string newStr(str, length);
   duk_push_string(ctx, newStr.c_str());
-  return wrap<DuktapeString>();
+  return wrap<jsi::String>();
 }
 
 jsi::String DuktapeRuntime::createStringFromUtf8(const uint8_t *utf8,
                                                  size_t length) {
   std::string utf8Str((char *)utf8, length);
   dukPushUtf8String(utf8Str);
-  return wrap<DuktapeString>();
+  return wrap<jsi::String>();
 }
 
 jsi::Object DuktapeRuntime::createObject() {
   duk_push_object(ctx);
-  return wrap<DuktapeObject>();
+  return wrap<jsi::Object>();
 }
 
 jsi::Object DuktapeRuntime::createObject(std::shared_ptr<jsi::HostObject> ho) {
@@ -144,7 +144,7 @@ jsi::Object DuktapeRuntime::createObject(std::shared_ptr<jsi::HostObject> ho) {
   // proxy and the target
   hostObjects->emplace(proxyHeapPtr, dho);
   hostObjects->emplace(targetHeapPtr, dho);
-  return wrap<DuktapeObject>();
+  return wrap<jsi::Object>();
 }
 
 std::shared_ptr<jsi::HostObject>
@@ -279,7 +279,7 @@ DuktapeRuntime::createFunctionFromHostFunction(const jsi::PropNameID &name,
   assert(duk_is_function(ctx, -1));
   auto funcPointer = duk_get_heapptr(ctx, -1);
   hostFunctions->emplace(funcPointer, hf);
-  return wrap<DuktapeObject>().asFunction(*this);
+  return wrap<jsi::Object>().asFunction(*this);
 }
 
 jsi::Value DuktapeRuntime::call(const jsi::Function &func,
@@ -305,13 +305,13 @@ jsi::Value DuktapeRuntime::stackToValue(int stack_index) {
   } else if (duk_is_boolean(ctx, stack_index)) {
     return jsi::Value((bool)duk_get_boolean(ctx, stack_index));
   } else if (duk_is_symbol(ctx, stack_index)) {
-    return jsi::Value(wrap<DuktapeSymbol>(stack_index));
+    return jsi::Value(wrap<jsi::Symbol>(stack_index));
   } else if (duk_is_string(ctx, stack_index)) {
-    return jsi::Value(wrap<DuktapeString>(stack_index));
+    return jsi::Value(wrap<jsi::String>(stack_index));
   } else if (duk_is_null(ctx, stack_index)) {
     return jsi::Value(nullptr);
   } else if (duk_is_object(ctx, stack_index)) {
-    return jsi::Value(wrap<DuktapeObject>(stack_index));
+    return jsi::Value(wrap<jsi::Object>(stack_index));
   } else if (duk_is_undefined(ctx, stack_index)) {
     return jsi::Value();
   }
