@@ -225,26 +225,12 @@ private:
   public:
     DuktapeWrapper<T>(duk_context *ctx, int stackIndex)
         : T(new DuktapePointerValue(ctx, stackIndex)){};
-    DuktapeWrapper<T>(T &&other) : T(std::move(other)){};
 
-    static void *ptr(T &obj) {
-      return static_cast<const DuktapeWrapper<T> &>(obj).getDukHeapPtr();
+    void *ptr() const {
+      return static_cast<DuktapePointerValue *>(this->ptr_)->dukPtr_;
     }
-
-    static size_t idx(T &obj) {
-      return static_cast<const DuktapeWrapper<T> &>(obj).getStackIndex();
-    }
-
-  private:
-    size_t getStackIndex() const {
-      DuktapePointerValue *dtv = (DuktapePointerValue *)this->ptr_;
-      return dtv->stackIndex_;
-    }
-
-    void *getDukHeapPtr() const {
-      DuktapePointerValue *dtv = (DuktapePointerValue *)this->ptr_;
-      void *duk_heap_ptr = dtv->dukPtr_;
-      return duk_heap_ptr;
+    size_t idx() const {
+      return static_cast<DuktapePointerValue *>(this->ptr_)->stackIndex_;
     }
   };
 
@@ -254,11 +240,11 @@ private:
   }
 
   void *ptr(const jsi::Pointer &p) const {
-    return DuktapeWrapper<const jsi::Pointer>::ptr(p);
+    return static_cast<const DuktapeWrapper<const jsi::Pointer> &>(p).ptr();
   }
 
   size_t idx(const jsi::Pointer &p) const {
-    return DuktapeWrapper<const jsi::Pointer>::idx(p);
+    return static_cast<const DuktapeWrapper<const jsi::Pointer> &>(p).idx();
   }
 
   void dukPushJsiValue(const jsi::Value &value) {
