@@ -395,7 +395,8 @@ TEST_P(JSITest, HostObjectTest) {
                    .getBool());
 }
 
-TEST_P(JSITest, HostObjectProtoTest) {
+// see https://tinyurl.com/mr296v98
+TEST_P(JSITest, DISABLED_HostObjectProtoTest) {
   class ProtoHostObject : public HostObject {
     Value get(Runtime& rt, const PropNameID&) override {
       return String::createFromAscii(rt, "phoprop");
