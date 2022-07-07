@@ -277,7 +277,17 @@ DuktapeRuntime::createFunctionFromHostFunction(const jsi::PropNameID &name,
   duk_push_c_function(ctx, DuktapeRuntime::hostFunctionProxy, DUK_VARARGS);
   assert(duk_is_object(ctx, -1));
   assert(duk_is_function(ctx, -1));
-  auto funcPointer = duk_get_heapptr(ctx, -1);
+  auto hostFunctionIndex = duk_normalize_index(ctx, -1);
+
+  duk_push_string(ctx, "name");
+  duk_dup(ctx, idx(name));
+  duk_def_prop(ctx, hostFunctionIndex, DUK_DEFPROP_HAVE_VALUE);
+
+  duk_push_string(ctx, "length");
+  duk_push_number(ctx, paramCount);
+  duk_def_prop(ctx, hostFunctionIndex, DUK_DEFPROP_HAVE_VALUE);
+
+  auto funcPointer = duk_get_heapptr(ctx, hostFunctionIndex);
   hostFunctions->emplace(funcPointer, hf);
   return wrap<jsi::Object>().asFunction(*this);
 }
@@ -413,8 +423,12 @@ duk_ret_t DuktapeRuntime::hostFunctionProxy(duk_context *ctx) {
     args.push_back(dt->stackToValue(stackIndex));
   }
 
-  auto result = func(*dt, jsi::Value(), args.data(), n);
-  dt->dukPushJsiValue(result);
+  try {
+    auto result = func(*dt, jsi::Value(), args.data(), args.size());
+    dt->dukPushJsiValue(result);
+  } catch (std::exception &e) {
+    throw jsi::JSError(*dt, e.what(), "");
+  }
   return 1;
 }
 } // namespace DuktapeJSI
