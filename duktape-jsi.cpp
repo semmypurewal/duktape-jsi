@@ -223,6 +223,10 @@ bool DuktapeRuntime::isFunction(const jsi::Object &obj) const {
   return duk_is_function(ctx, idx(obj));
 }
 
+bool DuktapeRuntime::isHostObject(const jsi::Object &obj) const {
+  return hostObjects->find(ptr(obj)) != hostObjects->end();
+}
+
 bool DuktapeRuntime::isHostFunction(const jsi::Function &func) const {
   return hostFunctions->find(ptr(func)) != hostFunctions->end();
 }
@@ -305,6 +309,21 @@ jsi::Value DuktapeRuntime::call(const jsi::Function &func,
     throw jsi::JSError(*this, duk_safe_to_string(ctx, -1));
   }
   return topOfStackToValue();
+}
+
+jsi::Value DuktapeRuntime::callAsConstructor(const jsi::Function &constructor,
+                                             const jsi::Value *args,
+                                             size_t count) {
+  duk_dup(ctx, idx(constructor));
+  for (size_t i = 0; i < count; i++) {
+    dukPushJsiValue(args[i]);
+  }
+  duk_new(ctx, count);
+  return topOfStackToValue();
+}
+
+bool DuktapeRuntime::instanceOf(const jsi::Object &o, const jsi::Function &f) {
+  return duk_instanceof(ctx, idx(o), idx(f));
 }
 
 jsi::Value DuktapeRuntime::topOfStackToValue() { return stackToValue(-1); }

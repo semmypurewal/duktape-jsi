@@ -111,9 +111,7 @@ public:
 
   bool isFunction(const jsi::Object &) const override;
 
-  bool isHostObject(const jsi::Object &obj) const override {
-    return hostObjects->find(ptr(obj)) != hostObjects->end();
-  }
+  bool isHostObject(const jsi::Object &) const override;
 
   bool isHostFunction(const jsi::Function &func) const override;
 
@@ -152,9 +150,7 @@ public:
                   size_t) override;
 
   jsi::Value callAsConstructor(const jsi::Function &, const jsi::Value *args,
-                               size_t count) override {
-    throw std::logic_error("callAsConstructor: unimplemented method");
-  }
+                               size_t count) override;
 
   bool strictEquals(const jsi::Symbol &a, const jsi::Symbol &b) const override {
     throw std::logic_error("strictEquals: unimplemented method");
@@ -168,9 +164,7 @@ public:
     throw std::logic_error("strictEquals: unimplemented method");
   }
 
-  bool instanceOf(const jsi::Object &o, const jsi::Function &f) override {
-    throw std::logic_error("instanceOf: unimplemented method");
-  }
+  bool instanceOf(const jsi::Object &, const jsi::Function &) override;
 
 private:
   duk_context *ctx;
