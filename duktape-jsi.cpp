@@ -329,6 +329,21 @@ jsi::Value DuktapeRuntime::callAsConstructor(const jsi::Function &constructor,
   return topOfStackToValue();
 }
 
+bool DuktapeRuntime::strictEquals(const jsi::Symbol &a,
+                                  const jsi::Symbol &b) const {
+  return duk_strict_equals(ctx, idx(a), idx(b));
+}
+
+bool DuktapeRuntime::strictEquals(const jsi::String &a,
+                                  const jsi::String &b) const {
+  return duk_strict_equals(ctx, idx(a), idx(b));
+}
+
+bool DuktapeRuntime::strictEquals(const jsi::Object &a,
+                                  const jsi::Object &b) const {
+  return duk_strict_equals(ctx, idx(a), idx(b));
+}
+
 bool DuktapeRuntime::instanceOf(const jsi::Object &o, const jsi::Function &f) {
   return duk_instanceof(ctx, idx(o), idx(f));
 }

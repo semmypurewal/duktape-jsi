@@ -152,17 +152,11 @@ public:
   jsi::Value callAsConstructor(const jsi::Function &, const jsi::Value *args,
                                size_t count) override;
 
-  bool strictEquals(const jsi::Symbol &a, const jsi::Symbol &b) const override {
-    throw std::logic_error("strictEquals: unimplemented method");
-  }
+  bool strictEquals(const jsi::Symbol &, const jsi::Symbol &) const override;
 
-  bool strictEquals(const jsi::String &a, const jsi::String &b) const override {
-    throw std::logic_error("strictEquals: unimplemented method");
-  }
+  bool strictEquals(const jsi::String &, const jsi::String &) const override;
 
-  bool strictEquals(const jsi::Object &a, const jsi::Object &b) const override {
-    throw std::logic_error("strictEquals: unimplemented method");
-  }
+  bool strictEquals(const jsi::Object &a, const jsi::Object &b) const override;
 
   bool instanceOf(const jsi::Object &, const jsi::Function &) override;
 
