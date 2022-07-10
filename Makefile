@@ -1,6 +1,6 @@
 CPP=clang++
 CC=clang
-CFLAGS=-Wall -Werror -pedantic
+CFLAGS=-Wall -Werror -pedantic -g
 JSI_DIR=./jsi
 DUKTAPE_DIR=./duktape-2.7.0
 GTEST_DIR=./googletest
@@ -16,7 +16,7 @@ $(BUILDS)/test: test.cpp  $(BUILDS)/gtest-all.o $(BUILDS)/duktape-jsi.a
 
 # testlib.cpp has some warnings that aren't suppressed by -isystem, so not enabling warnings
 $(BUILDS)/jsi-test.o: jsi/test/testlib.h jsi/test/testlib.cpp | $(BUILDS)
-	$(CPP) -isystem . -isystem $(GTEST_DIR)/include -c jsi/test/testlib.cpp -o $(BUILDS)/jsi-test.o
+	$(CPP) -g -isystem . -isystem $(GTEST_DIR)/include -c jsi/test/testlib.cpp -o $(BUILDS)/jsi-test.o
 
 $(BUILDS)/duktape-jsi.a: $(BUILDS)/jsi.o $(BUILDS)/duktape.o $(BUILDS)/duktape-jsi.o
 	$(AR) $(ARFLAGS) $@ $^
