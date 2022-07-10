@@ -598,11 +598,16 @@ duk_ret_t DuktapeRuntime::hostFunctionProxy(duk_context *ctx) {
     args.push_back(dt->stackToValue(stackIndex));
   }
 
+  duk_push_this(ctx);
+  auto thisValue = dt->stackToValue(duk_normalize_index(ctx, -1));
+
   try {
-    auto result = func(*dt, jsi::Value(), args.data(), args.size());
+    auto result = func(*dt, thisValue, args.data(), args.size());
     scope->pushReturnValue(result);
   } catch (std::exception &e) {
-    throw jsi::JSError(*dt, e.what(), "");
+    std::string err(std::string("Exception in HostFunction: ") +
+                    std::string(e.what()));
+    duk_generic_error(ctx, err.c_str());
   }
   dt->popDuktapeScope();
   return 1;
