@@ -6,24 +6,30 @@ using ::testing::Test;
 
 using namespace DuktapeJSI;
 
-facebook::jsi::Function function(facebook::jsi::Runtime &rt,
-                                 const std::string &code) {
-  auto eval = rt.global().getPropertyAsFunction(rt, "eval");
-  return eval.call(rt, std::string("(" + code + ")").c_str())
-      .getObject(rt)
-      .getFunction(rt);
-}
-
 class DuktapeRuntimeTest : public Test {
 protected:
   std::shared_ptr<facebook::jsi::Runtime> dt;
+  std::shared_ptr<DuktapeRuntime> debugRt;
 
-  void SetUp() { dt = std::make_shared<DuktapeRuntime>(); }
+  void SetUp() {
+    debugRt = std::make_shared<DuktapeRuntime>();
+    dt = debugRt;
+  }
   void TearDown() {}
+
+  facebook::jsi::Value eval(const char *code) {
+    return dt->global().getPropertyAsFunction(*dt, "eval").call(*dt, code);
+  }
 
   facebook::jsi::Value evaluateScript(const std::string script) {
     return dt->evaluateJavaScript(
         std::make_shared<const facebook::jsi::StringBuffer>(script), "");
+  }
+
+  facebook::jsi::Function function(const std::string &code) {
+    return eval(std::string("(" + code + ")").c_str())
+        .getObject(*dt)
+        .getFunction(*dt);
   }
 
   facebook::jsi::Value
@@ -44,6 +50,53 @@ protected:
 TEST_F(DuktapeRuntimeTest, BasicEvaluateJS) {
   auto v = evaluateScript("const temp = 5+2+20.5; temp;");
   EXPECT_EQ(v.getNumber(), 27.5);
+}
+
+TEST_F(DuktapeRuntimeTest, StackManagement) {
+  EXPECT_TRUE(eval("undefined").isUndefined());
+  EXPECT_TRUE(eval("null").isNull());
+  EXPECT_TRUE(eval("true").isBool());
+  EXPECT_TRUE(eval("false").isBool());
+  EXPECT_TRUE(eval("123").isNumber());
+  EXPECT_TRUE(eval("123.4").isNumber());
+  EXPECT_TRUE(eval("'str'").isString());
+  EXPECT_TRUE(eval("({})").isObject());
+  EXPECT_TRUE(eval("[]").isObject());
+  EXPECT_TRUE(eval("(function(){})").isObject());
+
+  EXPECT_EQ(eval("123").getNumber(), 123);
+  EXPECT_EQ(eval("123.4").getNumber(), 123.4);
+  EXPECT_EQ(eval("'str'").getString(*dt).utf8(*dt), "str");
+  EXPECT_TRUE(eval("[]").getObject(*dt).isArray(*dt));
+
+  EXPECT_TRUE(eval("undefined").isUndefined());
+  EXPECT_TRUE(eval("null").isNull());
+  EXPECT_TRUE(eval("true").isBool());
+  EXPECT_TRUE(eval("false").isBool());
+  EXPECT_TRUE(eval("123").isNumber());
+  EXPECT_TRUE(eval("123.4").isNumber());
+  EXPECT_TRUE(eval("'str'").isString());
+  EXPECT_TRUE(eval("({})").isObject());
+  EXPECT_TRUE(eval("[]").isObject());
+  EXPECT_TRUE(eval("(function(){})").isObject());
+
+  EXPECT_TRUE(eval("true").asBool());
+  EXPECT_THROW(eval("123").asBool(), facebook::jsi::JSIException);
+  EXPECT_EQ(eval("456").asNumber(), 456);
+  EXPECT_THROW(eval("'word'").asNumber(), facebook::jsi::JSIException);
+  EXPECT_EQ(
+      eval("({1:2, 3:4})").asObject(*dt).getProperty(*dt, "1").getNumber(), 2);
+  EXPECT_THROW(eval("'oops'").asObject(*dt), facebook::jsi::JSIException);
+
+  EXPECT_EQ(eval("['zero',1,2,3]").toString(*dt).utf8(*dt), "zero,1,2,3");
+
+  EXPECT_EQ(eval("123").getNumber(), 123);
+  EXPECT_EQ(eval("123.4").getNumber(), 123.4);
+  EXPECT_EQ(eval("'str'").getString(*dt).utf8(*dt), "str");
+  EXPECT_TRUE(eval("[]").getObject(*dt).isArray(*dt));
+  // next expectation is currently wrong due to the way we handle
+  // scopes that might return a value. It should be fixable though.
+  // EXPECT_EQ(debugRt->getStackTop(), 0);
 }
 
 TEST_F(DuktapeRuntimeTest, MaintainStateBetweenEvaluateCalls) {
@@ -335,23 +388,21 @@ TEST_F(DuktapeRuntimeTest, HostObject) {
 
   EXPECT_TRUE(cho.isHostObject(*dt));
 
-  EXPECT_TRUE(
-      function(*dt, "function (obj) { return obj.someRandomProp == 9000; }")
-          .call(*dt, cho)
-          .getBool());
+  EXPECT_TRUE(function("function (obj) { return obj.someRandomProp == 9000; }")
+                  .call(*dt, cho)
+                  .getBool());
 
   EXPECT_TRUE(ho->getCalled);
 
   EXPECT_EQ(
-      function(*dt,
-               "function (obj) { return (obj.thisIsAThing = 'randoString'); }")
+      function("function (obj) { return (obj.thisIsAThing = 'randoString');}")
           .call(*dt, cho)
           .getString(*dt)
           .utf8(*dt),
       "randoString");
 
-  EXPECT_TRUE(function(*dt, "function (obj) { return "
-                            "Object.getOwnPropertyNames(obj).length == 5}")
+  EXPECT_TRUE(function("function (obj) { return "
+                       "Object.getOwnPropertyNames(obj).length == 5}")
                   .call(*dt, cho)
                   .getBool());
 

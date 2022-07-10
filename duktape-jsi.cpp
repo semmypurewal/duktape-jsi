@@ -1,4 +1,5 @@
 #include "duktape-jsi.h"
+#include "cesu8/cesu8.h"
 #include "jsi/jsi.h"
 #include <algorithm>
 #include <cassert>
@@ -10,7 +11,13 @@ DuktapeRuntime::HostFunctionMapType *DuktapeRuntime::hostFunctions =
 DuktapeRuntime::HostObjectMapType *DuktapeRuntime::hostObjects =
     new HostObjectMapType;
 
-DuktapeRuntime::DuktapeRuntime() { ctx = duk_create_heap_default(); }
+DuktapeRuntime::DuktapeRuntime() {
+  ctx = duk_create_heap_default();
+  refCounts_ = new std::map<void *, size_t>();
+  scopeStack_ = new std::stack<std::shared_ptr<DuktapeScopeState>>();
+  pushDuktapeScope();
+}
+
 DuktapeRuntime::~DuktapeRuntime() {
   // remove host functions from global map
   std::vector<void *> toRemove;
@@ -299,7 +306,7 @@ DuktapeRuntime::createFunctionFromHostFunction(const jsi::PropNameID &name,
 jsi::Value DuktapeRuntime::call(const jsi::Function &func,
                                 const jsi::Value &jsThis,
                                 const jsi::Value *args, size_t count) {
-  dukPushJsiPtrValue(ctx, std::move(func));
+  dukPushJsiPtrValue(std::move(func));
   dukPushJsiValue(std::move(jsThis));
   for (unsigned int i = 0; i < count; ++i) {
     dukPushJsiValue(args[i]);
@@ -326,25 +333,169 @@ bool DuktapeRuntime::instanceOf(const jsi::Object &o, const jsi::Function &f) {
   return duk_instanceof(ctx, idx(o), idx(f));
 }
 
+size_t DuktapeRuntime::getStackTop() { return duk_get_top(ctx); }
+
+std::string DuktapeRuntime::stackEltToString(int idx) {
+  std::string result = std::to_string(idx);
+
+  if ((duk_is_object(ctx, idx) || duk_is_string(ctx, idx)) &&
+      refCounts_->find(duk_get_heapptr(ctx, idx)) != refCounts_->end()) {
+    auto refCount = refCounts_->at(duk_get_heapptr(ctx, idx));
+    result += "(" + std::to_string(refCount) + ")";
+  } else {
+    result += "(*)";
+  }
+
+  result += ":\t";
+  if (duk_is_boolean(ctx, idx)) {
+    if (duk_get_boolean(ctx, idx)) {
+      result += "true";
+    } else {
+      result += "false";
+    }
+  } else if (duk_is_number(ctx, idx)) {
+    result += std::to_string(duk_get_number(ctx, idx));
+  } else if (duk_is_undefined(ctx, idx)) {
+    result += "undefined";
+  } else if (duk_is_null(ctx, idx)) {
+    result += "null";
+  } else if (duk_is_string(ctx, idx)) {
+    result += std::string("'") + duk_get_string(ctx, idx) + std::string("'");
+  } else if (duk_is_function(ctx, idx)) {
+    result += "[Object/Function]";
+  } else if (duk_is_array(ctx, idx)) {
+    result += "[Object/Array]";
+  } else if (duk_is_object(ctx, idx)) {
+    result += "[Object/Object]";
+  } else {
+    result += "[unknown type]";
+  }
+
+  return result;
+}
+
+std::string DuktapeRuntime::stackToString() {
+  std::string result = "*************************\n";
+  size_t top = duk_normalize_index(ctx, -1);
+  for (int i = top; i >= 0; i--) {
+    result += stackEltToString(i) + "\n";
+  }
+  result += "*************************";
+  return result;
+}
+
 jsi::Value DuktapeRuntime::topOfStackToValue() { return stackToValue(-1); }
 
-jsi::Value DuktapeRuntime::stackToValue(int stack_index) {
-  if (duk_is_number(ctx, stack_index)) {
-    return jsi::Value(duk_get_number(ctx, stack_index));
-  } else if (duk_is_boolean(ctx, stack_index)) {
-    return jsi::Value((bool)duk_get_boolean(ctx, stack_index));
-  } else if (duk_is_symbol(ctx, stack_index)) {
-    return jsi::Value(wrap<jsi::Symbol>(stack_index));
-  } else if (duk_is_string(ctx, stack_index)) {
-    return jsi::Value(wrap<jsi::String>(stack_index));
-  } else if (duk_is_null(ctx, stack_index)) {
+jsi::Value DuktapeRuntime::stackToValue(int stackIndex) {
+  if (duk_is_number(ctx, stackIndex)) {
+    return jsi::Value(duk_get_number(ctx, stackIndex));
+  } else if (duk_is_boolean(ctx, stackIndex)) {
+    return jsi::Value((bool)duk_get_boolean(ctx, stackIndex));
+  } else if (duk_is_symbol(ctx, stackIndex)) {
+    return jsi::Value(wrap<jsi::Symbol>(stackIndex));
+  } else if (duk_is_string(ctx, stackIndex)) {
+    return jsi::Value(wrap<jsi::String>(stackIndex));
+  } else if (duk_is_null(ctx, stackIndex)) {
     return jsi::Value(nullptr);
-  } else if (duk_is_object(ctx, stack_index)) {
-    return jsi::Value(wrap<jsi::Object>(stack_index));
-  } else if (duk_is_undefined(ctx, stack_index)) {
+  } else if (duk_is_object(ctx, stackIndex)) {
+    return jsi::Value(wrap<jsi::Object>(stackIndex));
+  } else if (duk_is_undefined(ctx, stackIndex)) {
     return jsi::Value();
   }
   throw std::logic_error("unknown duktype");
+}
+
+template <typename T> T DuktapeRuntime::wrap(int stackIndex) {
+  auto idx = duk_normalize_index(ctx, stackIndex);
+  return DuktapeWrapper<T>(*this, idx);
+}
+
+size_t DuktapeRuntime::idx(const jsi::Pointer &p) const {
+  return static_cast<const DuktapeWrapper<const jsi::Pointer> &>(p).idx();
+}
+
+void *DuktapeRuntime::ptr(const jsi::Pointer &p) const {
+  return static_cast<const DuktapeWrapper<const jsi::Pointer> &>(p).ptr();
+}
+
+void DuktapeRuntime::increaseRefCount(void *ref) {
+  if (refCounts_->find(ref) == refCounts_->end()) {
+    refCounts_->emplace(ref, 0);
+  }
+  refCounts_->at(ref)++;
+}
+
+void DuktapeRuntime::decreaseRefCount(void *ref) {
+  refCounts_->at(ref)--;
+
+  if (refCounts_->at(ref) == 0) {
+    refCounts_->erase(ref);
+  }
+}
+
+bool DuktapeRuntime::hasReference(int stackIndex) {
+  auto idx = duk_normalize_index(ctx, stackIndex);
+  // primitives have no C++ references since everything is copied
+  if (!duk_is_valid_index(ctx, idx) || !duk_get_heapptr(ctx, idx)) {
+    return false;
+  }
+
+  if (refCounts_->find(duk_get_heapptr(ctx, idx)) != refCounts_->end()) {
+    return true;
+  }
+
+  return false;
+}
+
+void DuktapeRuntime::dukPushJsiValue(const jsi::Value &value) {
+  if (value.isUndefined()) {
+    duk_push_undefined(ctx);
+  } else if (value.isNull()) {
+    duk_push_null(ctx);
+  } else if (value.isBool()) {
+    duk_push_boolean(ctx, value.getBool());
+  } else if (value.isNumber()) {
+    duk_push_number(ctx, value.getNumber());
+  } else if (value.isString()) {
+    dukPushJsiPtrValue(value.getString(*this));
+  } else if (value.isSymbol()) {
+    dukPushJsiPtrValue(value.getSymbol(*this));
+  } else if (value.isObject()) {
+    dukPushJsiPtrValue(value.getObject(*this));
+  } else {
+    throw std::logic_error("unknown duk type");
+  }
+}
+
+template <typename T> void DuktapeRuntime::dukPushJsiPtrValue(T &&value) {
+  duk_push_heapptr(ctx, ptr(value));
+}
+
+void DuktapeRuntime::dukPushUtf8String(const std::string &utf8) {
+  auto cesu8 = (char *)copy_utf8_as_cesu8(utf8.c_str(), strlen(utf8.c_str()));
+  duk_push_string(ctx, cesu8);
+  free(cesu8);
+}
+
+std::string DuktapeRuntime::dukCopyStringAsUtf8(int stackIndex) {
+  auto cesu8 = duk_get_string(ctx, stackIndex);
+  auto utf8 = (char *)copy_cesu8_as_utf8(cesu8, strlen(cesu8));
+  auto result = std::string(utf8);
+  free(utf8);
+  return result;
+}
+
+void DuktapeRuntime::popDuktapeScope() {
+  auto poppedScope = scopeStack_->top();
+  scopeStack_->pop();
+  poppedScope->invalidate();
+}
+
+std::shared_ptr<DuktapeRuntime::DuktapeScopeState>
+DuktapeRuntime::pushDuktapeScope() {
+  auto result = std::make_shared<DuktapeScopeState>(*this);
+  scopeStack_->push(result);
+  return result;
 }
 
 duk_ret_t DuktapeRuntime::hostObjectGetProxy(duk_context *ctx) {
@@ -372,6 +523,8 @@ duk_ret_t DuktapeRuntime::hostObjectProxy(std::string trap, duk_context *ctx) {
   auto ho = hostObj->ho;
   assert(ho != nullptr);
 
+  auto scope = dt->pushDuktapeScope();
+
   for (int i = 0; i < n; ++i) {
     size_t stackIndex = duk_normalize_index(ctx, i - n);
     args.push_back(dt->stackToValue(stackIndex));
@@ -396,7 +549,7 @@ duk_ret_t DuktapeRuntime::hostObjectProxy(std::string trap, duk_context *ctx) {
       result.setValueAtIndex(*dt, i, str);
     }
 
-    dt->dukPushJsiValue(std::move(result));
+    scope->pushReturnValue(std::move(result));
   } else {
     if (!args[1].isString()) {
       auto numString = std::to_string((int)args[1].getNumber());
@@ -409,14 +562,14 @@ duk_ret_t DuktapeRuntime::hostObjectProxy(std::string trap, duk_context *ctx) {
     if (trap == "get") {
       try {
         auto result = ho->get(*dt, propName);
-        dt->dukPushJsiValue(result);
+        scope->pushReturnValue(result);
       } catch (std::exception &e) {
         throw jsi::JSError(*dt, e.what(), "");
       }
     } else if (trap == "set") {
       try {
         ho->set(*dt, propName, args[2]);
-        dt->dukPushJsiValue(args[2]);
+        scope->pushReturnValue(args[2]);
       } catch (std::exception &e) {
         throw jsi::JSError(*dt, e.what(), "");
       }
@@ -424,6 +577,7 @@ duk_ret_t DuktapeRuntime::hostObjectProxy(std::string trap, duk_context *ctx) {
       throw std::runtime_error("unknown trap");
     }
   }
+  dt->popDuktapeScope();
   return 1;
 }
 
@@ -435,6 +589,8 @@ duk_ret_t DuktapeRuntime::hostFunctionProxy(duk_context *ctx) {
   auto hostFunc = hostFunctions->at(duk_get_heapptr(ctx, -1));
   duk_pop(ctx);
   auto dt = hostFunc->rt;
+  auto scope = dt->pushDuktapeScope();
+
   auto func = hostFunc->func;
 
   for (int i = 0; i < n; ++i) {
@@ -444,10 +600,11 @@ duk_ret_t DuktapeRuntime::hostFunctionProxy(duk_context *ctx) {
 
   try {
     auto result = func(*dt, jsi::Value(), args.data(), args.size());
-    dt->dukPushJsiValue(result);
+    scope->pushReturnValue(result);
   } catch (std::exception &e) {
     throw jsi::JSError(*dt, e.what(), "");
   }
+  dt->popDuktapeScope();
   return 1;
 }
 } // namespace DuktapeJSI

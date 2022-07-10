@@ -1,9 +1,9 @@
-#include "cesu8/cesu8.h"
 #include "duktape-2.7.0/src/duktape.h"
 #include "jsi/jsi.h"
 #include <cassert>
 #include <iostream>
 #include <map>
+#include <stack>
 
 namespace DuktapeJSI {
 
@@ -166,15 +166,85 @@ public:
 
   bool instanceOf(const jsi::Object &, const jsi::Function &) override;
 
+  size_t getStackTop();
+
+  std::string stackEltToString(int idx);
+
+  std::string stackToString();
+
 private:
+  // forward declarations
+  struct DuktapeScopeState;
+  struct DuktapeHostFunction;
+  struct DuktapeHostObject;
+  template <typename T> class DuktapeWrapper;
+
+  // typedefs
+  using HostFunctionMapType =
+      std::map<void *, std::shared_ptr<DuktapeRuntime::DuktapeHostFunction>>;
+
+  using HostObjectMapType =
+      std::map<void *, std::shared_ptr<DuktapeRuntime::DuktapeHostObject>>;
+
+  // instance members
   duk_context *ctx;
-  jsi::Value stackToValue(int stack_index);
+  std::map<void *, size_t> *refCounts_;
+  std::stack<std::shared_ptr<DuktapeScopeState>> *scopeStack_;
+
+  // instance methods
+  jsi::Value stackToValue(int);
   jsi::Value topOfStackToValue();
-  static duk_ret_t hostFunctionProxy(duk_context *ctx);
-  static duk_ret_t hostObjectProxy(std::string trap, duk_context *ctx);
-  static duk_ret_t hostObjectGetProxy(duk_context *ctx);
-  static duk_ret_t hostObjectSetProxy(duk_context *ctx);
-  static duk_ret_t hostObjectOwnKeysProxy(duk_context *ctx);
+  template <typename T> T wrap(int stackIndex = -1);
+  void *ptr(const jsi::Pointer &) const;
+  size_t idx(const jsi::Pointer &) const;
+  void increaseRefCount(void *);
+  void decreaseRefCount(void *);
+  bool hasReference(int);
+  void dukPushJsiValue(const jsi::Value &);
+  template <typename T> void dukPushJsiPtrValue(T &&);
+  void dukPushUtf8String(const std::string &);
+  std::string dukCopyStringAsUtf8(int);
+  std::shared_ptr<DuktapeScopeState> pushDuktapeScope();
+  void popDuktapeScope();
+
+  // static members
+  static HostFunctionMapType *hostFunctions;
+  static HostObjectMapType *hostObjects;
+
+  // static methods
+  static duk_ret_t hostFunctionProxy(duk_context *);
+  static duk_ret_t hostObjectProxy(std::string, duk_context *);
+  static duk_ret_t hostObjectGetProxy(duk_context *);
+  static duk_ret_t hostObjectSetProxy(duk_context *);
+  static duk_ret_t hostObjectOwnKeysProxy(duk_context *);
+
+  // inner structs/classes
+  struct DuktapeScopeState {
+    DuktapeScopeState(DuktapeRuntime &rt)
+        : rt_(rt), stackBase_(duk_get_top(rt.ctx)) {
+      isValid = true;
+    }
+
+    void popUnreferenced() {
+      if (isValid) {
+        while (duk_normalize_index(rt_.ctx, -1) > (int)stackBase_ &&
+               !rt_.hasReference(-1)) {
+          duk_pop(rt_.ctx);
+        }
+      }
+    }
+
+    void pushReturnValue(const jsi::Value &result) {
+      rt_.dukPushJsiValue(result);
+      stackBase_ = duk_normalize_index(rt_.ctx, -1);
+    }
+
+    void invalidate() { isValid = false; }
+
+    DuktapeRuntime &rt_;
+    size_t stackBase_;
+    bool isValid;
+  };
 
   struct DuktapeHostFunction {
     DuktapeHostFunction(DuktapeRuntime *rt, jsi::HostFunctionType func)
@@ -191,34 +261,41 @@ private:
     std::shared_ptr<jsi::HostObject> ho;
   };
 
-  using HostFunctionMapType =
-      std::map<void *, std::shared_ptr<DuktapeRuntime::DuktapeHostFunction>>;
-  static HostFunctionMapType *hostFunctions;
-
-  using HostObjectMapType =
-      std::map<void *, std::shared_ptr<DuktapeRuntime::DuktapeHostObject>>;
-  static HostObjectMapType *hostObjects;
-
   struct DuktapePointerValue : public jsi::Runtime::PointerValue {
-    DuktapePointerValue(duk_context *ctx, int stackIndex)
-        : dukPtr_(duk_get_heapptr(ctx, stackIndex)), ctx_(ctx),
-          stackIndex_(stackIndex){};
+    DuktapePointerValue(DuktapeRuntime &rt, int stackIndex)
+        : rt_(rt), scope_(rt.scopeStack_->top()),
+          dukPtr_(duk_get_heapptr(rt.ctx, stackIndex)),
+          stackIndex_(stackIndex) {
+      rt_.increaseRefCount(dukPtr_);
+    };
+
+    DuktapePointerValue(const DuktapePointerValue &other)
+        : rt_(other.rt_), scope_(other.scope_), dukPtr_(other.dukPtr_),
+          stackIndex_(other.stackIndex_) {
+      rt_.increaseRefCount(dukPtr_);
+    }
 
     static jsi::Runtime::PointerValue *
     clone(const jsi::Runtime::PointerValue *pv) {
       return new DuktapePointerValue(
           *(static_cast<const DuktapePointerValue *>(pv)));
     }
-    void invalidate() override{};
+
+    void invalidate() override {
+      rt_.decreaseRefCount(dukPtr_);
+      scope_->popUnreferenced();
+    };
+
+    DuktapeRuntime &rt_;
+    std::shared_ptr<DuktapeScopeState> scope_;
     void *dukPtr_;
-    duk_context *ctx_;
     size_t stackIndex_;
   };
 
   template <typename T> class DuktapeWrapper : public T {
   public:
-    DuktapeWrapper<T>(duk_context *ctx, int stackIndex)
-        : T(new DuktapePointerValue(ctx, stackIndex)){};
+    DuktapeWrapper<T>(DuktapeRuntime &rt, int stackIndex)
+        : T(new DuktapePointerValue(rt, stackIndex)){};
 
     void *ptr() const {
       return static_cast<DuktapePointerValue *>(this->ptr_)->dukPtr_;
@@ -227,56 +304,5 @@ private:
       return static_cast<DuktapePointerValue *>(this->ptr_)->stackIndex_;
     }
   };
-
-  template <typename T> T wrap(int stackIndex = -1) {
-    auto idx = duk_normalize_index(ctx, stackIndex);
-    return DuktapeWrapper<T>(ctx, idx);
-  }
-
-  void *ptr(const jsi::Pointer &p) const {
-    return static_cast<const DuktapeWrapper<const jsi::Pointer> &>(p).ptr();
-  }
-
-  size_t idx(const jsi::Pointer &p) const {
-    return static_cast<const DuktapeWrapper<const jsi::Pointer> &>(p).idx();
-  }
-
-  void dukPushJsiValue(const jsi::Value &value) {
-    if (value.isUndefined()) {
-      duk_push_undefined(ctx);
-    } else if (value.isNull()) {
-      duk_push_null(ctx);
-    } else if (value.isBool()) {
-      duk_push_boolean(ctx, value.getBool());
-    } else if (value.isNumber()) {
-      duk_push_number(ctx, value.getNumber());
-    } else if (value.isString()) {
-      dukPushJsiPtrValue(ctx, value.getString(*this));
-    } else if (value.isSymbol()) {
-      dukPushJsiPtrValue(ctx, value.getSymbol(*this));
-    } else if (value.isObject()) {
-      dukPushJsiPtrValue(ctx, value.getObject(*this));
-    } else {
-      throw std::logic_error("unknown duk type");
-    }
-  }
-
-  template <typename T> void dukPushJsiPtrValue(duk_context *ctx, T &&value) {
-    duk_push_heapptr(ctx, ptr(value));
-  }
-
-  void dukPushUtf8String(const std::string &utf8) {
-    auto cesu8 = (char *)copy_utf8_as_cesu8(utf8.c_str(), strlen(utf8.c_str()));
-    duk_push_string(ctx, cesu8);
-    free(cesu8);
-  }
-
-  std::string dukCopyStringAsUtf8(int stack_index) {
-    auto cesu8 = duk_get_string(ctx, stack_index);
-    auto utf8 = (char *)copy_cesu8_as_utf8(cesu8, strlen(cesu8));
-    auto result = std::string(utf8);
-    free(utf8);
-    return result;
-  }
 };
 } // namespace DuktapeJSI
