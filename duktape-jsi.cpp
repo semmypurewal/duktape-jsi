@@ -448,14 +448,8 @@ void DuktapeRuntime::decreaseRefCount(void *ref) {
   }
 }
 
-bool DuktapeRuntime::hasReference(int stackIndex) {
-  auto idx = duk_normalize_index(ctx, stackIndex);
-  // primitives have no C++ references since everything is copied
-  if (!duk_is_valid_index(ctx, idx) || !duk_get_heapptr(ctx, idx)) {
-    return false;
-  }
-
-  if (refCounts_->find(duk_get_heapptr(ctx, idx)) != refCounts_->end()) {
+bool DuktapeRuntime::hasReference(void *dukPtr) {
+  if (dukPtr && refCounts_->find(dukPtr) != refCounts_->end()) {
     return true;
   }
 

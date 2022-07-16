@@ -193,7 +193,7 @@ private:
   size_t idx(const jsi::Pointer &) const;
   void increaseRefCount(void *);
   void decreaseRefCount(void *);
-  bool hasReference(int);
+  bool hasReference(void *);
   void dukPushJsiValue(const jsi::Value &);
   template <typename T> void dukPushJsiPtrValue(T &&);
   void dukPushUtf8String(const std::string &);
@@ -223,7 +223,7 @@ private:
     void popUnreferenced() {
       if (isValid) {
         while (duk_normalize_index(rt_.ctx, -1) > (int)stackBase_ &&
-               !rt_.hasReference(-1)) {
+               !rt_.hasReference(duk_get_heapptr(rt_.ctx, -1))) {
           duk_pop(rt_.ctx);
         }
       }
