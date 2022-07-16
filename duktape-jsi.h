@@ -200,6 +200,7 @@ private:
   std::string dukCopyStringAsUtf8(int);
   std::shared_ptr<DuktapeScopeState> pushDuktapeScope();
   void popDuktapeScope();
+  void createCppRef(jsi::Value &v);
 
   // static members
   static HostFunctionMapType *hostFunctions;
@@ -295,6 +296,12 @@ private:
       return static_cast<DuktapePointerValue *>(this->ptr_)->dukPtr_;
     }
     size_t idx() const {
+      auto ptr = static_cast<DuktapePointerValue *>(this->ptr_);
+      auto &rt = ptr->rt_;
+      if (rt.scopeStack_->top() != ptr->scope_) {
+        duk_push_heapptr(rt.ctx, ptr->dukPtr_);
+        return duk_normalize_index(rt.ctx, -1);
+      }
       return static_cast<DuktapePointerValue *>(this->ptr_)->stackIndex_;
     }
   };

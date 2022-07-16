@@ -239,9 +239,9 @@ bool DuktapeRuntime::isHostFunction(const jsi::Function &func) const {
 }
 
 jsi::Array DuktapeRuntime::getPropertyNames(const jsi::Object &obj) {
+  auto objIndex = idx(obj);
   duk_push_array(ctx);
   auto arrIndex = duk_normalize_index(ctx, -1);
-  auto objIndex = idx(obj);
   duk_enum(ctx, objIndex, 0);
   auto enum_index = duk_normalize_index(ctx, -1);
   for (unsigned int i = 0; duk_next(ctx, enum_index, 0); i++) {
@@ -584,6 +584,11 @@ duk_ret_t DuktapeRuntime::hostObjectProxy(std::string trap, duk_context *ctx) {
     } else if (trap == "set") {
       try {
         ho->set(*dt, propName, args[2]);
+
+        if (args[2].isObject() || args[2].isString()) {
+          dt->createCppRef(args[2]);
+        }
+
         scope->pushReturnValue(args[2]);
       } catch (std::exception &e) {
         throw jsi::JSError(*dt, e.what(), "");
@@ -626,5 +631,24 @@ duk_ret_t DuktapeRuntime::hostFunctionProxy(duk_context *ctx) {
   }
   dt->popDuktapeScope();
   return 1;
+}
+
+// TODO: removeCppRef when the cpp object goes completely out of scope
+void DuktapeRuntime::createCppRef(jsi::Value &v) {
+  const char *cppRefsKey = "__cppRefs_";
+
+  if (!global().hasProperty(*this, cppRefsKey)) {
+    global().setProperty(*this, cppRefsKey, createObject());
+  }
+
+  auto cppRefs = global().getProperty(*this, cppRefsKey).asObject(*this);
+
+  void *key = nullptr;
+  if (v.isObject()) {
+    key = ptr(v.asObject(*this));
+  } else if (v.isString()) {
+    key = ptr(v.asString(*this));
+  }
+  cppRefs.setProperty(*this, std::to_string((unsigned long)key).c_str(), v);
 }
 } // namespace DuktapeJSI

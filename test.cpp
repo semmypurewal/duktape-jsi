@@ -412,6 +412,66 @@ TEST_F(DuktapeRuntimeTest, HostObject) {
   EXPECT_TRUE(ho->getPropertyNamesCalled);
 }
 
+TEST_F(DuktapeRuntimeTest, HostObjectWithValueMembers) {
+  class Bag : public jsi::HostObject {
+  public:
+    Bag() = default;
+
+    const jsi::Value &operator[](const std::string &name) const {
+      auto iter = data_.find(name);
+      if (iter == data_.end()) {
+        return undef_;
+      }
+      return iter->second;
+    }
+
+  protected:
+    jsi::Value get(jsi::Runtime &rt, const jsi::PropNameID &name) override {
+      return jsi::Value(rt, (*this)[name.utf8(rt)]);
+    }
+
+    void set(jsi::Runtime &rt, const jsi::PropNameID &name,
+             const jsi::Value &val) override {
+      data_.emplace(name.utf8(rt), jsi::Value(rt, val));
+    }
+
+    jsi::Value undef_;
+    std::map<std::string, jsi::Value> data_;
+  };
+
+  auto sharedBag = std::make_shared<Bag>();
+  auto &bag = *sharedBag;
+  jsi::Object jsbag =
+      jsi::Object::createFromHostObject(*dt, std::move(sharedBag));
+
+  auto set = function("function (o) {"
+                      "  o.foo = 'bar';"
+                      "  o.obj = { 'foo': 'bar' };"
+                      "  o.bool = true;"
+                      "}");
+
+  set.call(*dt, jsbag);
+  auto checkObj =
+      function("function(o) { return typeof o.obj === 'object';  }");
+  auto checkStr =
+      function("function(o) { return typeof o.foo === 'string';  }");
+  auto checkBool =
+      function("function(o) { return typeof o.bool === 'boolean';  }");
+
+  EXPECT_TRUE(checkObj.call(*dt, jsbag).getBool());
+  EXPECT_TRUE(checkStr.call(*dt, jsbag).getBool());
+  EXPECT_TRUE(checkBool.call(*dt, jsbag).getBool());
+
+  EXPECT_TRUE(bag["foo"].getString(*dt).utf8(*dt) == "bar");
+  EXPECT_TRUE(bag["bool"].getBool());
+  EXPECT_EQ(bag["obj"]
+                .getObject(*dt)
+                .getProperty(*dt, "foo")
+                .getString(*dt)
+                .utf8(*dt),
+            "bar");
+}
+
 int main(int argc, char **argv) {
   InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
