@@ -54,10 +54,15 @@ jsi::Value DuktapeRuntime::evaluateJavaScript(
       duk_peval_string(ctx, reinterpret_cast<const char *>(buffer->data()));
 
   if (err) {
-    assert(duk_is_error(ctx, -1));
-    duk_safe_to_string(ctx, -1);
+    auto errIndex = duk_normalize_index(ctx, -1);
+    assert(duk_is_error(ctx, errIndex));
+
+    duk_get_prop_string(ctx, errIndex, "stack");
+    std::string stack(duk_get_string(ctx, -1));
+
+    duk_safe_to_string(ctx, errIndex);
     std::string message(duk_get_string(ctx, -1));
-    std::string stack("[STACK]");
+
     throw jsi::JSError(*this, message, stack);
   } else {
     return topOfStackToValue();
