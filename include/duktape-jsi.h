@@ -176,6 +176,7 @@ private:
   // instance members
   duk_context *ctx;
   std::unique_ptr<std::map<void *, size_t>> refCounts_;
+  std::unique_ptr<std::map<void *, std::string>> hostObjectPointerRefsInJS_;
   std::unique_ptr<std::stack<std::shared_ptr<DuktapeScopeState>>> scopeStack_;
 
   // instance methods
@@ -193,10 +194,13 @@ private:
   std::string dukCopyStringAsUtf8(int);
   std::shared_ptr<DuktapeScopeState> pushDuktapeScope();
   void popDuktapeScope();
-  void createCppRef(jsi::Value &v);
+  void createHostObjectPointerRefInJS(jsi::Value &v);
+  bool hasHostObjectPointerRefInJS(void *);
+  void removeHostObjectPointerRefFromJS(void *);
   void throwValueOnTopOfStack();
 
   // static members
+  static const char *hostObjectPointerRefsInJSKey;
   static HostFunctionMapType *hostFunctions;
   static HostObjectMapType *hostObjects;
 
@@ -274,6 +278,10 @@ private:
     void invalidate() override {
       rt_.decreaseRefCount(dukPtr_);
       scope_->popUnreferenced();
+      if (!rt_.hasReference(dukPtr_) &&
+          rt_.hasHostObjectPointerRefInJS(dukPtr_)) {
+        rt_.removeHostObjectPointerRefFromJS(dukPtr_);
+      }
       delete this;
     };
 

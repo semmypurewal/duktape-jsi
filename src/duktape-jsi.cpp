@@ -5,6 +5,8 @@
 
 namespace DuktapeJSI {
 
+const char *DuktapeRuntime::hostObjectPointerRefsInJSKey =
+    "__hostObjectPointerRefs_";
 DuktapeRuntime::HostFunctionMapType *DuktapeRuntime::hostFunctions =
     new HostFunctionMapType;
 DuktapeRuntime::HostObjectMapType *DuktapeRuntime::hostObjects =
@@ -13,9 +15,13 @@ DuktapeRuntime::HostObjectMapType *DuktapeRuntime::hostObjects =
 DuktapeRuntime::DuktapeRuntime() {
   ctx = duk_create_heap_default();
   refCounts_ = std::make_unique<std::map<void *, size_t>>();
+  hostObjectPointerRefsInJS_ =
+      std::make_unique<std::map<void *, std::string>>();
   scopeStack_ =
       std::make_unique<std::stack<std::shared_ptr<DuktapeScopeState>>>();
   pushDuktapeScope();
+
+  global().setProperty(*this, hostObjectPointerRefsInJSKey, createObject());
 }
 
 DuktapeRuntime::~DuktapeRuntime() {
@@ -613,7 +619,7 @@ duk_ret_t DuktapeRuntime::hostObjectProxy(std::string trap, duk_context *ctx) {
         ho->set(*dt, propName, args[2]);
 
         if (args[2].isObject() || args[2].isString()) {
-          dt->createCppRef(args[2]);
+          dt->createHostObjectPointerRefInJS(args[2]);
         }
 
         scope->pushReturnValue(args[2]);
@@ -707,23 +713,39 @@ duk_ret_t DuktapeRuntime::hostFunctionProxy(duk_context *ctx) {
   return DUK_RET_ERROR;
 }
 
-// TODO: removeCppRef when the cpp object goes completely out of scope
-void DuktapeRuntime::createCppRef(jsi::Value &v) {
-  const char *cppRefsKey = "__cppRefs_";
-
-  if (!global().hasProperty(*this, cppRefsKey)) {
-    global().setProperty(*this, cppRefsKey, createObject());
-  }
-
-  auto cppRefs = global().getProperty(*this, cppRefsKey).asObject(*this);
-
+void DuktapeRuntime::createHostObjectPointerRefInJS(jsi::Value &v) {
   void *key = nullptr;
   if (v.isObject()) {
     key = ptr(v.asObject(*this));
   } else if (v.isString()) {
     key = ptr(v.asString(*this));
   }
-  cppRefs.setProperty(*this, std::to_string((unsigned long)key).c_str(), v);
+  if (key != nullptr) {
+    auto hostObjectPointerRefsInJS =
+        global()
+            .getProperty(*this, hostObjectPointerRefsInJSKey)
+            .asObject(*this);
+
+    std::string jsKey = std::to_string((unsigned long)key);
+    hostObjectPointerRefsInJS.setProperty(*this, jsKey.c_str(), v);
+    hostObjectPointerRefsInJS_->emplace(key, jsKey);
+  }
+}
+
+bool DuktapeRuntime::hasHostObjectPointerRefInJS(void *key) {
+  return hostObjectPointerRefsInJS_->find(key) !=
+         hostObjectPointerRefsInJS_->end();
+}
+
+void DuktapeRuntime::removeHostObjectPointerRefFromJS(void *key) {
+  std::string jsKey = std::to_string((unsigned long)key);
+  global()
+      .getPropertyAsFunction(*this, "eval")
+      .call(*this,
+            std::string("delete " + std::string(hostObjectPointerRefsInJSKey) +
+                        "[" + jsKey + "];")
+                .c_str());
+  hostObjectPointerRefsInJS_->erase(key);
 }
 
 void DuktapeRuntime::throwValueOnTopOfStack() {
