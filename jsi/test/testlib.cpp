@@ -924,7 +924,7 @@ TEST_P(JSITest, ExceptionStackTraceTest) {
   EXPECT_NE(stack.find("world"), std::string::npos);
 }
 
-TEST_P(JSITest, PreparedJavaScriptSourceTest) {
+TEST_P(JSITest, DISABLED_PreparedJavaScriptSourceTest) {
   rt.evaluateJavaScript(std::make_unique<StringBuffer>("var q = 0;"), "");
   auto prep = rt.prepareJavaScript(std::make_unique<StringBuffer>("q++;"), "");
   EXPECT_EQ(rt.global().getProperty(rt, "q").getNumber(), 0);
@@ -934,7 +934,7 @@ TEST_P(JSITest, PreparedJavaScriptSourceTest) {
   EXPECT_EQ(rt.global().getProperty(rt, "q").getNumber(), 2);
 }
 
-TEST_P(JSITest, PreparedJavaScriptURLInBacktrace) {
+TEST_P(JSITest, DISABLED_PreparedJavaScriptURLInBacktrace) {
   std::string sourceURL = "//PreparedJavaScriptURLInBacktrace/Test/URL";
   std::string throwingSource =
       "function thrower() { throw new Error('oops')}"
@@ -964,7 +964,7 @@ unsigned countOccurences(const std::string& of, const std::string& in) {
 
 } // namespace
 
-TEST_P(JSITest, JSErrorsArePropagatedNicely) {
+TEST_P(JSITest, DISABLED_JSErrorsArePropagatedNicely) {
   unsigned callsBeforeError = 5;
 
   Function sometimesThrows = function(
@@ -1001,7 +1001,7 @@ TEST_P(JSITest, JSErrorsCanBeConstructedWithStack) {
   EXPECT_EQ(err.getStack(), "stack");
 }
 
-TEST_P(JSITest, JSErrorDoesNotInfinitelyRecurse) {
+TEST_P(JSITest, DISABLED_JSErrorDoesNotInfinitelyRecurse) {
   Value globalError = rt.global().getProperty(rt, "Error");
   rt.global().setProperty(rt, "Error", Value::undefined());
   try {
@@ -1037,7 +1037,7 @@ TEST_P(JSITest, JSErrorDoesNotInfinitelyRecurse) {
   rt.global().setProperty(rt, "Error", globalError);
 }
 
-TEST_P(JSITest, JSErrorStackOverflowHandling) {
+TEST_P(JSITest, DISABLED_JSErrorStackOverflowHandling) {
   rt.global().setProperty(
       rt,
       "callSomething",
