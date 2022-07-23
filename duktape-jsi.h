@@ -1,5 +1,6 @@
 #include "duktape-2.7.0/src/duktape.h"
 #include "jsi/jsi.h"
+#include "jsi/jsilib.h"
 #include <cassert>
 #include <iostream>
 #include <map>
@@ -18,15 +19,11 @@ public:
                                 const std::string &) override;
 
   std::shared_ptr<const jsi::PreparedJavaScript>
-  prepareJavaScript(const std::shared_ptr<const jsi::Buffer> &buffer,
-                    std::string sourceURL) override {
-    throw std::logic_error("prepareJavaScript: unimplemented method");
-  }
+  prepareJavaScript(const std::shared_ptr<const jsi::Buffer> &,
+                    std::string) override;
 
   jsi::Value evaluatePreparedJavaScript(
-      const std::shared_ptr<const jsi::PreparedJavaScript> &js) override {
-    throw std::logic_error("evaluatePreparedJavaScript: unimplemented method");
-  }
+      const std::shared_ptr<const jsi::PreparedJavaScript> &) override;
 
   bool drainMicrotasks(int maxMicrotasksHint) override {
     throw std::logic_error("drainMicrotasks: unimplemented method");
@@ -199,6 +196,7 @@ private:
   std::shared_ptr<DuktapeScopeState> pushDuktapeScope();
   void popDuktapeScope();
   void createCppRef(jsi::Value &v);
+  void throwJSErrorOnTopOfStack();
 
   // static members
   static HostFunctionMapType *hostFunctions;

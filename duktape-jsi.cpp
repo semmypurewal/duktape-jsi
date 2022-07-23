@@ -50,23 +50,34 @@ DuktapeRuntime::~DuktapeRuntime() {
 jsi::Value DuktapeRuntime::evaluateJavaScript(
     const std::shared_ptr<const jsi::Buffer> &buffer,
     const std::string &sourceUrl) {
-  auto err =
-      duk_peval_string(ctx, reinterpret_cast<const char *>(buffer->data()));
+
+  duk_push_string(ctx, reinterpret_cast<const char *>(buffer->data()));
+  duk_push_string(ctx, sourceUrl.c_str());
+  auto err = duk_pcompile(ctx, 0);
+  if (err) {
+    throwJSErrorOnTopOfStack();
+  }
+  err = duk_pcall(ctx, 0);
 
   if (err) {
-    auto errIndex = duk_normalize_index(ctx, -1);
-    assert(duk_is_error(ctx, errIndex));
-
-    duk_get_prop_string(ctx, errIndex, "stack");
-    std::string stack(duk_get_string(ctx, -1));
-
-    duk_safe_to_string(ctx, errIndex);
-    std::string message(duk_get_string(ctx, -1));
-
-    throw jsi::JSError(*this, message, stack);
-  } else {
-    return topOfStackToValue();
+    throwJSErrorOnTopOfStack();
   }
+  return topOfStackToValue();
+}
+
+std::shared_ptr<const jsi::PreparedJavaScript>
+DuktapeRuntime::prepareJavaScript(
+    const std::shared_ptr<const jsi::Buffer> &buffer, std::string sourceURL) {
+  return std::make_shared<jsi::SourceJavaScriptPreparation>(buffer, sourceURL);
+}
+
+jsi::Value DuktapeRuntime::evaluatePreparedJavaScript(
+    const std::shared_ptr<const jsi::PreparedJavaScript> &js) {
+  auto sjsp =
+      std::dynamic_pointer_cast<const jsi::SourceJavaScriptPreparation>(js);
+  return evaluateJavaScript(
+      std::make_shared<jsi::StringBuffer>((const char *)sjsp->data()),
+      sjsp->sourceURL());
 }
 
 std::string DuktapeRuntime::description() { return "Duktape 2.7 Runtime"; }
@@ -661,5 +672,18 @@ void DuktapeRuntime::createCppRef(jsi::Value &v) {
     key = ptr(v.asString(*this));
   }
   cppRefs.setProperty(*this, std::to_string((unsigned long)key).c_str(), v);
+}
+
+void DuktapeRuntime::throwJSErrorOnTopOfStack() {
+  auto errIndex = duk_normalize_index(ctx, -1);
+  assert(duk_is_error(ctx, errIndex));
+
+  duk_get_prop_string(ctx, errIndex, "stack");
+  std::string stack(duk_get_string(ctx, -1));
+
+  duk_safe_to_string(ctx, errIndex);
+  std::string message(duk_get_string(ctx, -1));
+
+  throw jsi::JSError(*this, message, stack);
 }
 } // namespace DuktapeJSI

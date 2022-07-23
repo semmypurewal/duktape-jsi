@@ -924,7 +924,7 @@ TEST_P(JSITest, ExceptionStackTraceTest) {
   EXPECT_NE(stack.find("world"), std::string::npos);
 }
 
-TEST_P(JSITest, DISABLED_PreparedJavaScriptSourceTest) {
+TEST_P(JSITest, PreparedJavaScriptSourceTest) {
   rt.evaluateJavaScript(std::make_unique<StringBuffer>("var q = 0;"), "");
   auto prep = rt.prepareJavaScript(std::make_unique<StringBuffer>("q++;"), "");
   EXPECT_EQ(rt.global().getProperty(rt, "q").getNumber(), 0);
@@ -934,7 +934,7 @@ TEST_P(JSITest, DISABLED_PreparedJavaScriptSourceTest) {
   EXPECT_EQ(rt.global().getProperty(rt, "q").getNumber(), 2);
 }
 
-TEST_P(JSITest, DISABLED_PreparedJavaScriptURLInBacktrace) {
+TEST_P(JSITest, PreparedJavaScriptURLInBacktrace) {
   std::string sourceURL = "//PreparedJavaScriptURLInBacktrace/Test/URL";
   std::string throwingSource =
       "function thrower() { throw new Error('oops')}"
