@@ -118,6 +118,18 @@ DuktapeRuntime::clonePropNameID(const jsi::Runtime::PointerValue *pv) {
   return DuktapePointerValue::clone(pv);
 }
 
+std::string DuktapeRuntime::symbolToString(const jsi::Symbol &s) {
+  assert(duk_is_symbol(ctx, idx(s)));
+  auto dukSym = dukCopyStringAsUtf8(idx(s));
+  auto dukSymCStr = (uint8_t *)dukSym.c_str();
+  assert(dukSymCStr[0] == 0x81);
+  auto end = 1;
+  while (dukSymCStr[end] != 0xff) {
+    end++;
+  }
+  return "Symbol(" + dukSym.substr(1, end - 1) + ")";
+}
+
 jsi::String DuktapeRuntime::createStringFromAscii(const char *str,
                                                   size_t length) {
   std::string newStr(str, length);

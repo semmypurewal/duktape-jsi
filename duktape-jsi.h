@@ -69,9 +69,7 @@ public:
 
   bool compare(const jsi::PropNameID &, const jsi::PropNameID &) override;
 
-  std::string symbolToString(const jsi::Symbol &) override {
-    throw std::logic_error("symbolToString: unimplemented method");
-  }
+  std::string symbolToString(const jsi::Symbol &) override;
 
   jsi::String createStringFromAscii(const char *str, size_t length) override;
 
