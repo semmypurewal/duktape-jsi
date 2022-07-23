@@ -1037,7 +1037,7 @@ TEST_P(JSITest, DISABLED_JSErrorDoesNotInfinitelyRecurse) {
   rt.global().setProperty(rt, "Error", globalError);
 }
 
-TEST_P(JSITest, DISABLED_JSErrorStackOverflowHandling) {
+TEST_P(JSITest, JSErrorStackOverflowHandling) {
   rt.global().setProperty(
       rt,
       "callSomething",

@@ -196,7 +196,7 @@ private:
   std::shared_ptr<DuktapeScopeState> pushDuktapeScope();
   void popDuktapeScope();
   void createCppRef(jsi::Value &v);
-  void throwJSErrorOnTopOfStack();
+  void throwValueOnTopOfStack();
 
   // static members
   static HostFunctionMapType *hostFunctions;

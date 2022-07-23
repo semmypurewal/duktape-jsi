@@ -55,12 +55,12 @@ jsi::Value DuktapeRuntime::evaluateJavaScript(
   duk_push_string(ctx, sourceUrl.c_str());
   auto err = duk_pcompile(ctx, 0);
   if (err) {
-    throwJSErrorOnTopOfStack();
+    throwValueOnTopOfStack();
   }
   err = duk_pcall(ctx, 0);
 
   if (err) {
-    throwJSErrorOnTopOfStack();
+    throwValueOnTopOfStack();
   }
   return topOfStackToValue();
 }
@@ -341,7 +341,7 @@ jsi::Value DuktapeRuntime::call(const jsi::Function &func,
   }
   auto err = duk_pcall_method(ctx, count);
   if (err) {
-    throw jsi::JSError(*this, duk_safe_to_string(ctx, -1));
+    throwValueOnTopOfStack();
   }
   return topOfStackToValue();
 }
@@ -674,16 +674,28 @@ void DuktapeRuntime::createCppRef(jsi::Value &v) {
   cppRefs.setProperty(*this, std::to_string((unsigned long)key).c_str(), v);
 }
 
-void DuktapeRuntime::throwJSErrorOnTopOfStack() {
-  auto errIndex = duk_normalize_index(ctx, -1);
-  assert(duk_is_error(ctx, errIndex));
+void DuktapeRuntime::throwValueOnTopOfStack() {
+  std::string dukCallStackLimit("callstack limit");
 
-  duk_get_prop_string(ctx, errIndex, "stack");
-  std::string stack(duk_get_string(ctx, -1));
+  auto objIndex = duk_normalize_index(ctx, -1);
+  if (duk_is_error(ctx, objIndex)) {
+    duk_get_prop_string(ctx, objIndex, "stack");
+    std::string stack(duk_get_string(ctx, -1));
 
-  duk_safe_to_string(ctx, errIndex);
-  std::string message(duk_get_string(ctx, -1));
+    duk_safe_to_string(ctx, objIndex);
+    std::string message(duk_get_string(ctx, -1));
 
-  throw jsi::JSError(*this, message, stack);
+    // The JSI tests expect the word 'exceeded' to appear in the error
+    // message associated with a stack overflow. This replacement gets
+    // that test passing, but it's probably not necessary.
+    auto index = message.find(dukCallStackLimit);
+    if (index != std::string::npos) {
+      message.replace(index, dukCallStackLimit.size(),
+                      "Maximum call stack size exceeded");
+    }
+    throw jsi::JSError(*this, message, stack);
+  } else {
+    throw jsi::JSError(*this, duk_safe_to_string(ctx, -1));
+  }
 }
 } // namespace DuktapeJSI
