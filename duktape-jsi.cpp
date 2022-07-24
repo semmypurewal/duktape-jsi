@@ -646,6 +646,8 @@ duk_ret_t DuktapeRuntime::hostFunctionProxy(duk_context *ctx) {
   try {
     auto result = func(*dt, thisValue, args.data(), args.size());
     scope->pushReturnValue(result);
+  } catch (jsi::JSError &e) {
+    dt->throwJSError(e.getMessage(), e.getStack());
   } catch (std::exception &e) {
     std::string err(std::string("Exception in HostFunction: ") +
                     std::string(e.what()));
@@ -674,18 +676,36 @@ void DuktapeRuntime::createCppRef(jsi::Value &v) {
   cppRefs.setProperty(*this, std::to_string((unsigned long)key).c_str(), v);
 }
 
-void DuktapeRuntime::throwJSError(std::string msg) {
+void throwJSErrorImpl(DuktapeRuntime *dt, duk_context *ctx,
+                      std::unique_ptr<std::string> msg,
+                      std::unique_ptr<std::string> stack) {
   // If the global Error object is deleted, the JSI tests expect a
   // string to be thrown instead of an Error object.  This doesn't
   // seem necessary for Duktape, since we can still throw Error
   // objects from C, but we'll go with it for now.
-  auto error = global().getProperty(*this, "Error");
+  auto error = dt->global().getProperty(*dt, "Error");
   if (error.isObject()) {
-    duk_generic_error(ctx, msg.c_str());
+    duk_push_error_object(ctx, DUK_ERR_ERROR, msg->c_str());
+    auto errIndex = duk_normalize_index(ctx, -1);
+    if (stack != nullptr) {
+      duk_push_string(ctx, stack->c_str());
+      duk_put_prop_string(ctx, errIndex, "stack");
+    }
+    assert(duk_is_error(ctx, -1));
+    duk_throw(ctx);
   } else {
-    duk_push_string(ctx, msg.c_str());
+    duk_push_string(ctx, msg->c_str());
     duk_throw(ctx);
   }
+}
+
+void DuktapeRuntime::throwJSError(std::string msg) {
+  throwJSErrorImpl(this, ctx, std::make_unique<std::string>(msg), nullptr);
+}
+
+void DuktapeRuntime::throwJSError(std::string msg, std::string stack) {
+  throwJSErrorImpl(this, ctx, std::make_unique<std::string>(msg),
+                   std::make_unique<std::string>(stack));
 }
 
 void DuktapeRuntime::throwValueOnTopOfStack() {
@@ -696,7 +716,8 @@ void DuktapeRuntime::throwValueOnTopOfStack() {
     duk_get_prop_string(ctx, objIndex, "stack");
     std::string stack(duk_get_string(ctx, -1));
 
-    duk_safe_to_string(ctx, objIndex);
+    duk_get_prop_string(ctx, objIndex, "message");
+    duk_safe_to_string(ctx, -1);
     std::string message(duk_get_string(ctx, -1));
 
     // The JSI tests expect the word 'exceeded' to appear in the error

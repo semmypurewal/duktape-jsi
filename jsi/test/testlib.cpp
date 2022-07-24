@@ -964,7 +964,7 @@ unsigned countOccurences(const std::string& of, const std::string& in) {
 
 } // namespace
 
-TEST_P(JSITest, DISABLED_JSErrorsArePropagatedNicely) {
+TEST_P(JSITest, JSErrorsArePropagatedNicely) {
   unsigned callsBeforeError = 5;
 
   Function sometimesThrows = function(
