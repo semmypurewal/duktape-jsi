@@ -649,7 +649,7 @@ duk_ret_t DuktapeRuntime::hostFunctionProxy(duk_context *ctx) {
   } catch (std::exception &e) {
     std::string err(std::string("Exception in HostFunction: ") +
                     std::string(e.what()));
-    duk_generic_error(ctx, err.c_str());
+    dt->throwJSError(err);
   }
   dt->popDuktapeScope();
   return 1;
@@ -672,6 +672,20 @@ void DuktapeRuntime::createCppRef(jsi::Value &v) {
     key = ptr(v.asString(*this));
   }
   cppRefs.setProperty(*this, std::to_string((unsigned long)key).c_str(), v);
+}
+
+void DuktapeRuntime::throwJSError(std::string msg) {
+  // If the global Error object is deleted, the JSI tests expect a
+  // string to be thrown instead of an Error object.  This doesn't
+  // seem necessary for Duktape, since we can still throw Error
+  // objects from C, but we'll go with it for now.
+  auto error = global().getProperty(*this, "Error");
+  if (error.isObject()) {
+    duk_generic_error(ctx, msg.c_str());
+  } else {
+    duk_push_string(ctx, msg.c_str());
+    duk_throw(ctx);
+  }
 }
 
 void DuktapeRuntime::throwValueOnTopOfStack() {

@@ -1001,7 +1001,7 @@ TEST_P(JSITest, JSErrorsCanBeConstructedWithStack) {
   EXPECT_EQ(err.getStack(), "stack");
 }
 
-TEST_P(JSITest, DISABLED_JSErrorDoesNotInfinitelyRecurse) {
+TEST_P(JSITest, JSErrorDoesNotInfinitelyRecurse) {
   Value globalError = rt.global().getProperty(rt, "Error");
   rt.global().setProperty(rt, "Error", Value::undefined());
   try {

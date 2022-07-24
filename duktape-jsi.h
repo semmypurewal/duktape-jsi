@@ -197,6 +197,7 @@ private:
   void popDuktapeScope();
   void createCppRef(jsi::Value &v);
   void throwValueOnTopOfStack();
+  void throwJSError(std::string message);
 
   // static members
   static HostFunctionMapType *hostFunctions;
