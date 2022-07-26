@@ -68,7 +68,7 @@ static uint16_t *cesu8_to_utf16_pairs(uint8_t *bytes, int offset) {
   return result;
 }
 
-static size_t cesu8_len_from_utf8(const uint8_t *utf8, size_t length) {
+static size_t cesu8_len_from_utf8(const char *utf8, size_t length) {
   int non_bmp_char_count = 0;
   size_t i;
 
@@ -78,10 +78,10 @@ static size_t cesu8_len_from_utf8(const uint8_t *utf8, size_t length) {
     }
   }
 
-  return sizeof(uint8_t) * length + (2 * non_bmp_char_count) + 1;
+  return sizeof(char) * length + (2 * non_bmp_char_count);
 }
 
-static size_t utf8_len_from_cesu8(const uint8_t *cesu8, size_t length) {
+static size_t utf8_len_from_cesu8(const char *cesu8, size_t length) {
   int non_bmp_char_count = 0;
   size_t i;
 
@@ -92,59 +92,63 @@ static size_t utf8_len_from_cesu8(const uint8_t *cesu8, size_t length) {
     }
   }
 
-  return sizeof(uint8_t) * length - (2 * non_bmp_char_count) + 1;
+  return sizeof(char) * length - (2 * non_bmp_char_count);
 }
 
-static uint8_t *copy_cesu8_as_utf8(const char *cesu8, size_t length) {
-  size_t utf8_len = utf8_len_from_cesu8((const uint8_t *)cesu8, length);
-  uint8_t *copy = (uint8_t *)malloc(utf8_len);
-  size_t copy_index = 0;
+static void copy_cesu8_as_utf8_buffer(char *dest, const char *cesu8,
+                                      size_t cesu8_length) {
+  size_t dest_index = 0;
   size_t utf8_index;
   uint16_t *pairs;
   uint8_t *utf8_char;
 
-  for (utf8_index = 0; utf8_index < length; utf8_index++) {
+  for (utf8_index = 0; utf8_index < cesu8_length; utf8_index++) {
     if ((uint8_t)cesu8[utf8_index] != 0xED) {
-      copy[copy_index++] = cesu8[utf8_index];
+      dest[dest_index++] = cesu8[utf8_index];
     } else {
       pairs = cesu8_to_utf16_pairs((uint8_t *)cesu8, utf8_index);
       utf8_index += 5;
       utf8_char = utf32_to_utf8(utf16_pair_to_utf32(pairs));
       free(pairs);
-      memcpy(copy + copy_index, utf8_char, 4);
-      copy_index += 4;
+      memcpy(dest + dest_index, utf8_char, 4);
+      dest_index += 4;
       free(utf8_char);
     }
   }
-
-  copy[copy_index++] = '\0';
-  return copy;
 }
 
-static uint8_t *copy_utf8_as_cesu8(const char *utf8, size_t length) {
-  size_t cesu8_len = cesu8_len_from_utf8((const uint8_t *)utf8, length);
-  uint8_t *copy = (uint8_t *)malloc(cesu8_len);
-  int copy_index = 0;
+static void copy_cesu8_as_utf8(char *dest, const char *cesu8) {
+  size_t length = strlen(cesu8);
+  copy_cesu8_as_utf8_buffer(dest, cesu8, length);
+  dest[utf8_len_from_cesu8(cesu8, length)] = '\0';
+}
+
+static void copy_utf8_as_cesu8_buffer(char *dest, const char *utf8,
+                                      size_t utf8_length) {
+  int dest_index = 0;
   size_t i;
 
-  for (i = 0; i < length; i++) {
+  for (i = 0; i < utf8_length; i++) {
     if ((uint8_t)utf8[i] >> 4 == 0xf) {
       uint32_t utf32_temp = utf8_to_utf32((uint8_t *)utf8 + i);
       uint16_t *utf16_temp = utf32_to_utf16_pair(utf32_temp);
       uint8_t *cesu8_temp = utf16_pair_to_cesu8(utf16_temp);
       free(utf16_temp);
 
-      memcpy(copy + copy_index, cesu8_temp, 6);
+      memcpy(dest + dest_index, cesu8_temp, 6);
       free(cesu8_temp);
       i += 3;
-      copy_index += 6;
+      dest_index += 6;
     } else {
-      copy[copy_index++] = utf8[i];
+      dest[dest_index++] = utf8[i];
     }
   }
+}
 
-  copy[copy_index++] = '\0';
-  return copy;
+static void copy_utf8_as_cesu8(char *dest, const char *utf8) {
+  size_t length = strlen(utf8);
+  copy_utf8_as_cesu8_buffer(dest, utf8, length);
+  dest[cesu8_len_from_utf8(utf8, length)] = '\0';
 }
 
 #endif /* CESU8_H */

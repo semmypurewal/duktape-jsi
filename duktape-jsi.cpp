@@ -509,15 +509,20 @@ template <typename T> void DuktapeRuntime::dukPushJsiPtrValue(T &&value) {
 }
 
 void DuktapeRuntime::dukPushUtf8String(const std::string &utf8) {
-  auto cesu8 = (char *)copy_utf8_as_cesu8(utf8.c_str(), strlen(utf8.c_str()));
-  duk_push_string(ctx, cesu8);
+  auto utf8_cstr = utf8.c_str();
+  auto len = cesu8_len_from_utf8(utf8_cstr, strlen(utf8_cstr)) + 1;
+  auto cesu8 = (char *)malloc(len);
+  copy_utf8_as_cesu8(cesu8, utf8_cstr);
+  duk_push_string(ctx, (const char *)cesu8);
   free(cesu8);
 }
 
 std::string DuktapeRuntime::dukCopyStringAsUtf8(int stackIndex) {
   auto cesu8 = duk_get_string(ctx, stackIndex);
-  auto utf8 = (char *)copy_cesu8_as_utf8(cesu8, strlen(cesu8));
-  auto result = std::string(utf8);
+  auto len = utf8_len_from_cesu8(cesu8, strlen(cesu8)) + 1;
+  auto utf8 = (char *)malloc(len);
+  copy_cesu8_as_utf8(utf8, cesu8);
+  auto result = std::string((const char *)utf8);
   free(utf8);
   return result;
 }

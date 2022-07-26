@@ -1,6 +1,6 @@
 # CESU-8 ANSI C header library
 
-This is an ANSI C header library that implements some basic utility functions that convert between [CESU-8](https://www.unicode.org/reports/tr26/) and [UTF-8](https://en.wikipedia.org/wiki/UTF-8) Unicode representations.
+This is an ANSI C header library that implements some basic utility functions that converts c-style strings from [CESU-8](https://www.unicode.org/reports/tr26/) to [UTF-8](https://en.wikipedia.org/wiki/UTF-8) and vice-versa.
 
 From the [associated technical report](https://www.unicode.org/reports/tr26/):
 
@@ -10,33 +10,49 @@ I've been playing around with the [Duktape](https://duktape.org) JavaScript runt
 
 ## API
 
-This library allocates new strings when doing the conversion, so you'll want to `free` the strings when you are finished with them. The alternative is to require the caller to pre-allocate a buffer, but that's a bit complex since the resulting length depends on the number of supplementary characters.
-
-To convert a C-style string from cesu-8 to utf-8:
+The main API assumes C-style null-terminated strings and provides helper functions to help you allocate enough memory to do the conversions. To convert a C-style string from cesu-8 to utf-8:
 
 ```c
   const char ok_cesu8[] = {0xED, 0xA0, 0xBC, 0xED, 0xB6, 0x97, '\0'};
-  const char *ok_utf8_copy = (char *)copy_cesu8_as_utf8(ok_cesu8, strlen(ok_cesu8));
-  printf("%s\n", ok_utf8_copy); // prints the :ok: emoji
-  free(ok_utf8_copy);
+  int ok_utf8_len = utf8_len_from_cesu8(ok_cesu8, strlen(ok_cesu8)) + 1;
+  char *ok_utf8 = (char *)malloc(ok_utf8_len);
+  copy_cesu8_as_utf8(ok_utf8, ok_cesu8);
+  printf("%s\n", (char *)ok_utf8); // prints the :ok: emoji
+  free(ok_utf8);
 ```
 
 To convert a C-style string from utf-8 to cesu-8:
 
 ```c
   const char thumbs_up_utf8[] = {0xF0, 0x9F, 0x91, 0x8D, '\0'};
-  const char thumbs_up_cesu8_copy = (char*) copy_utf8_as_cesu8(thumbs_up_utf8, strlen(thumbs_up_utf8));
-  // do something with the copy
-  free(thumbs_up_cesu8_copy);
+  int thumbs_up_cesu8_len =
+      cesu8_len_from_utf8(thumbs_up_utf8, strlen(thumbs_up_utf8)) + 1;
+  char *thumbs_up_cesu8 = (char *)malloc(thumbs_up_cesu8_len);
+  copy_utf8_as_cesu8(thumbs_up_cesu8, thumbs_up_utf8);
+  // do something with the thumbs up emoji encoded as cesu8
+  free(thumbs_up_cesu8);
 ```
 
-Note that if a string does not contain non-supplementary characters, you might not want to allocate additional memory or make a copy. Currently, the best way to determine that is to check the resulting length and see if its the same as the original string.
+Take a look at [test.c](test.c) for example `to_cesu8` and `to_utf8` helper functions which allocate memory for you.
+
+If you'd prefer to work with raw buffers (non-null terminated `char` buffers), you can use the buffer APIs directly. To do this, you'll need to specify the length of the originating buffer:
 
 ```c
-  if (strlen(cesu8_str) == utf8_len_from_cesu8(cesu8_str, strlen(cesu8_str))) {
+
+static void copy_cesu8_as_utf8_buffer(char *dest, const char *cesu8,
+                                      size_t cesu8_length);
+
+static void copy_utf8_as_cesu8_buffer(char *dest, const char *utf8,
+                                      size_t utf8_length);
+```
+
+Note that if a string does not contain non-supplementary characters, you might not want to allocate additional memory or make a copy since the cesu8 and utf8 representations will be identical. Currently, the best way to determine that is to check the resulting length and see if its the same as the original string.
+
+```c
+  if (strlen(cesu8) == utf8_len_from_cesu8(cesu8, strlen(cesu8))) {
       // no need to copy since the utf8 and cesu8 strings are equivalent
   } else {
-      str_utf8_copy = copy_cesu8_as_utf8(cesu8_str, strlen(cesu8_str));  // don't forget to free it later
+      copy_cesu8_as_utf8(utf8, cesu8, strlen(cesu8));
   }
 ```
 
