@@ -1,40 +1,48 @@
-CPP=clang++
 CC=clang
-CFLAGS=-Wall -Werror -pedantic -g
-JSI_DIR=./jsi
-DUKTAPE_DIR=./duktape-2.7.0
-GTEST_DIR=./googletest
-BUILDS=./builds
+CFLAGS=-Wall -Werror -pedantic -g -std=c17
+CXX=clang++
+CXXFLAGS=-Wall -Werror -pedantic -g -std=c++14
 
-all: $(BUILDS)/test $(BUILDS)/jsi-test
+BUILD=build
+INCLUDE=include
+LIBS=libs
+SRC=src
+TEST=test
 
-$(BUILDS)/jsi-test: jsi-test.cpp $(BUILDS)/jsi-test.o $(BUILDS)/gtest-all.o $(BUILDS)/duktape-jsi.a
-	$(CPP) $(CFLAGS) -Igoogletest/include -I. $^ -o $(BUILDS)/jsi-test -lpthread
+CESU8=$(LIBS)/cesu8
+DUKTAPE=$(LIBS)/duktape-2.7.0
+GTEST=$(LIBS)/googletest
+JSI=$(LIBS)/jsi
 
-$(BUILDS)/test: test.cpp  $(BUILDS)/gtest-all.o $(BUILDS)/duktape-jsi.a
-	$(CPP) $(CFLAGS) -Igoogletest/include -I. $^ -o $(BUILDS)/test -lpthread
+all: $(BUILD)/test $(BUILD)/jsi-test
+
+$(BUILD)/jsi-test: $(TEST)/jsi-test.cpp $(BUILD)/jsi-test.o $(BUILD)/gtest-all.o $(BUILD)/duktape-jsi.a
+	$(CXX) $(CXXFLAGS) -I$(GTEST)/include -Ilibs -I$(INCLUDE) $^ -o $(BUILD)/jsi-test -lpthread
+
+$(BUILD)/test: $(TEST)/test.cpp  $(BUILD)/gtest-all.o $(BUILD)/duktape-jsi.a
+	$(CXX) $(CXXFLAGS) -I$(GTEST)/include -Ilibs -I$(INCLUDE) $^ -o $(BUILD)/test -lpthread
 
 # testlib.cpp has some warnings that aren't suppressed by -isystem, so not enabling warnings
-$(BUILDS)/jsi-test.o: jsi/test/testlib.h jsi/test/testlib.cpp | $(BUILDS)
-	$(CPP) -g -isystem . -isystem $(GTEST_DIR)/include -c jsi/test/testlib.cpp -o $(BUILDS)/jsi-test.o
+$(BUILD)/jsi-test.o: $(JSI)/test/testlib.h $(JSI)/test/testlib.cpp | $(BUILD)
+	$(CXX) -g -isystem . -isystem $(GTEST)/include -Ilibs -c $(JSI)/test/testlib.cpp -o $(BUILD)/jsi-test.o
 
-$(BUILDS)/duktape-jsi.a: $(BUILDS)/jsi.o $(BUILDS)/duktape.o $(BUILDS)/duktape-jsi.o
+$(BUILD)/duktape-jsi.a: $(BUILD)/jsi.o $(BUILD)/duktape.o $(BUILD)/duktape-jsi.o
 	$(AR) $(ARFLAGS) $@ $^
 
-$(BUILDS)/duktape-jsi.o: cesu8/cesu8.h duktape-jsi.h duktape-jsi.cpp | $(BUILDS)
-	$(CPP) $(CFLAGS) -o $(BUILDS)/duktape-jsi.o -c duktape-jsi.cpp -I.
+$(BUILD)/duktape-jsi.o: $(CESU8)/cesu8.h $(INCLUDE)/duktape-jsi.h $(SRC)/duktape-jsi.cpp | $(BUILD)
+	$(CXX) $(CXXFLAGS) -o $(BUILD)/duktape-jsi.o -c $(SRC)/duktape-jsi.cpp -Ilibs -I$(INCLUDE)
 
-$(BUILDS)/jsi.o: $(JSI_DIR)/* | $(BUILDS)
-	$(CPP) $(CFLAGS) -o $(BUILDS)/jsi.o -c $(JSI_DIR)/jsi.cpp -I.
+$(BUILD)/jsi.o: $(JSI)/* | $(BUILD)
+	$(CXX) $(CXXFLAGS) -o $(BUILD)/jsi.o -c $(JSI)/jsi.cpp -Ilibs
 
-$(BUILDS)/duktape.o: $(DUKTAPE_DIR)/* | $(BUILDS)
-	$(CC) $(CFLAGS) -o $(BUILDS)/duktape.o -c $(DUKTAPE_DIR)/src/duktape.c
+$(BUILD)/duktape.o: $(DUKTAPE)/* | $(BUILD)
+	$(CC) $(CFLAGS) -o $(BUILD)/duktape.o -c $(DUKTAPE)/src/duktape.c
 
-$(BUILDS)/gtest-all.o: $(GTEST_DIR)/src/* | $(BUILDS)
-	$(CPP) $(CFLAGS) -o $@ -c $(GTEST_DIR)/src/gtest-all.cc -I$(GTEST_DIR)/include -I$(GTEST_DIR)
+$(BUILD)/gtest-all.o: $(GTEST)/src/* | $(BUILD)
+	$(CXX) $(CXXFLAGS) -o $@ -c $(GTEST)/src/gtest-all.cc -I$(GTEST)/include -I$(GTEST)
 
-$(BUILDS):
-	mkdir -p $(BUILDS)
+$(BUILD):
+	mkdir -p $(BUILD)
 
 clean:
-	rm -rf builds
+	rm -rf $(BUILD)

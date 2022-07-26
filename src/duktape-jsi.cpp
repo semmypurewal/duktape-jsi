@@ -1,6 +1,5 @@
 #include "duktape-jsi.h"
 #include "cesu8/cesu8.h"
-#include "jsi/jsi.h"
 #include <algorithm>
 #include <cassert>
 
