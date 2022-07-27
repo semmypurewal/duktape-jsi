@@ -275,6 +275,7 @@ private:
     void invalidate() override {
       rt_.decreaseRefCount(dukPtr_);
       scope_->popUnreferenced();
+      delete this;
     };
 
     DuktapeRuntime &rt_;
