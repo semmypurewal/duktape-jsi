@@ -12,8 +12,9 @@ DuktapeRuntime::HostObjectMapType *DuktapeRuntime::hostObjects =
 
 DuktapeRuntime::DuktapeRuntime() {
   ctx = duk_create_heap_default();
-  refCounts_ = new std::map<void *, size_t>();
-  scopeStack_ = new std::stack<std::shared_ptr<DuktapeScopeState>>();
+  refCounts_ = std::make_unique<std::map<void *, size_t>>();
+  scopeStack_ =
+      std::make_unique<std::stack<std::shared_ptr<DuktapeScopeState>>>();
   pushDuktapeScope();
 }
 

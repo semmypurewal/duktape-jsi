@@ -175,8 +175,8 @@ private:
 
   // instance members
   duk_context *ctx;
-  std::map<void *, size_t> *refCounts_;
-  std::stack<std::shared_ptr<DuktapeScopeState>> *scopeStack_;
+  std::unique_ptr<std::map<void *, size_t>> refCounts_;
+  std::unique_ptr<std::stack<std::shared_ptr<DuktapeScopeState>>> scopeStack_;
 
   // instance methods
   jsi::Value stackToValue(int);
