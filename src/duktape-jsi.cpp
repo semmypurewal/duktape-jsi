@@ -628,7 +628,45 @@ duk_ret_t DuktapeRuntime::hostObjectProxy(std::string trap, duk_context *ctx) {
   return 1;
 }
 
-duk_ret_t DuktapeRuntime::hostFunctionProxy(duk_context *ctx) {
+namespace {
+
+bool errorIsDefined(duk_context *ctx) {
+  auto result = true;
+  duk_push_global_object(ctx);
+  auto hasProp = duk_get_prop_string(ctx, -1, "Error");
+  if (!hasProp || !duk_is_object(ctx, -1)) {
+    result = false;
+  }
+  duk_pop_2(ctx);
+  return result;
+}
+
+void throwJSError(duk_context *ctx, std::unique_ptr<std::string> msg,
+                  std::unique_ptr<std::string> stack) {
+  // If the global Error object is deleted, the JSI tests expect a
+  // string to be thrown instead of an Error object.  This doesn't
+  // seem necessary for Duktape, since we can still throw Error
+  // objects from C, but we'll go with it for now.
+  if (errorIsDefined(ctx)) {
+    duk_push_error_object(ctx, DUK_ERR_ERROR, msg->c_str());
+    auto errIndex = duk_normalize_index(ctx, -1);
+    if (stack != nullptr) {
+      duk_push_string(ctx, stack->c_str());
+      duk_put_prop_string(ctx, errIndex, "stack");
+    }
+    assert(duk_is_error(ctx, -1));
+  } else {
+    duk_push_string(ctx, msg->c_str());
+  }
+  // manually release these because duk_throw never returns
+  msg.reset();
+  stack.reset();
+  duk_throw(ctx);
+}
+
+} // namespace
+
+duk_ret_t DuktapeRuntime::hostFunctionProxyImpl(duk_context *ctx) {
   int n = duk_get_top(ctx);
   std::vector<jsi::Value> args;
 
@@ -647,19 +685,26 @@ duk_ret_t DuktapeRuntime::hostFunctionProxy(duk_context *ctx) {
 
   duk_push_this(ctx);
   auto thisValue = dt->stackToValue(duk_normalize_index(ctx, -1));
-
-  try {
-    auto result = func(*dt, thisValue, args.data(), args.size());
-    scope->pushReturnValue(result);
-  } catch (jsi::JSError &e) {
-    dt->throwJSError(e.getMessage(), e.getStack());
-  } catch (std::exception &e) {
-    std::string err(std::string("Exception in HostFunction: ") +
-                    std::string(e.what()));
-    dt->throwJSError(err);
-  }
+  auto result = func(*dt, thisValue, args.data(), args.size());
+  scope->pushReturnValue(result);
   dt->popDuktapeScope();
   return 1;
+}
+
+duk_ret_t DuktapeRuntime::hostFunctionProxy(duk_context *ctx) {
+  try {
+    return hostFunctionProxyImpl(ctx);
+  } catch (jsi::JSError &e) {
+    throwJSError(ctx, std::make_unique<std::string>(e.getMessage()),
+                 std::make_unique<std::string>(e.getStack()));
+  } catch (std::exception &e) {
+    throwJSError(
+        ctx,
+        std::make_unique<std::string>(
+            std::string("Exception in HostFunction: ") + std::string(e.what())),
+        nullptr);
+  }
+  return DUK_RET_ERROR;
 }
 
 // TODO: removeCppRef when the cpp object goes completely out of scope
@@ -679,38 +724,6 @@ void DuktapeRuntime::createCppRef(jsi::Value &v) {
     key = ptr(v.asString(*this));
   }
   cppRefs.setProperty(*this, std::to_string((unsigned long)key).c_str(), v);
-}
-
-void throwJSErrorImpl(DuktapeRuntime *dt, duk_context *ctx,
-                      std::unique_ptr<std::string> msg,
-                      std::unique_ptr<std::string> stack) {
-  // If the global Error object is deleted, the JSI tests expect a
-  // string to be thrown instead of an Error object.  This doesn't
-  // seem necessary for Duktape, since we can still throw Error
-  // objects from C, but we'll go with it for now.
-  auto error = dt->global().getProperty(*dt, "Error");
-  if (error.isObject()) {
-    duk_push_error_object(ctx, DUK_ERR_ERROR, msg->c_str());
-    auto errIndex = duk_normalize_index(ctx, -1);
-    if (stack != nullptr) {
-      duk_push_string(ctx, stack->c_str());
-      duk_put_prop_string(ctx, errIndex, "stack");
-    }
-    assert(duk_is_error(ctx, -1));
-    duk_throw(ctx);
-  } else {
-    duk_push_string(ctx, msg->c_str());
-    duk_throw(ctx);
-  }
-}
-
-void DuktapeRuntime::throwJSError(std::string msg) {
-  throwJSErrorImpl(this, ctx, std::make_unique<std::string>(msg), nullptr);
-}
-
-void DuktapeRuntime::throwJSError(std::string msg, std::string stack) {
-  throwJSErrorImpl(this, ctx, std::make_unique<std::string>(msg),
-                   std::make_unique<std::string>(stack));
 }
 
 void DuktapeRuntime::throwValueOnTopOfStack() {

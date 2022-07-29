@@ -195,8 +195,6 @@ private:
   void popDuktapeScope();
   void createCppRef(jsi::Value &v);
   void throwValueOnTopOfStack();
-  void throwJSError(std::string message);
-  void throwJSError(std::string message, std::string stack);
 
   // static members
   static HostFunctionMapType *hostFunctions;
@@ -204,6 +202,7 @@ private:
 
   // static methods
   static duk_ret_t hostFunctionProxy(duk_context *);
+  static duk_ret_t hostFunctionProxyImpl(duk_context *);
   static duk_ret_t hostObjectProxy(std::string, duk_context *);
   static duk_ret_t hostObjectGetProxy(duk_context *);
   static duk_ret_t hostObjectSetProxy(duk_context *);

@@ -412,6 +412,43 @@ TEST_F(DuktapeRuntimeTest, HostObject) {
   EXPECT_TRUE(ho->getPropertyNamesCalled);
 }
 
+TEST_F(DuktapeRuntimeTest, HostFunctionWithError) {
+  jsi::Function dot = jsi::Function::createFromHostFunction(
+      *dt, jsi::PropNameID::forAscii(*dt, "dot"), 2,
+      [](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+         size_t count) {
+        EXPECT_TRUE(jsi::Value::strictEquals(rt, thisVal, rt.global()) ||
+                    thisVal.isUndefined());
+        if (count != 2) {
+          throw std::runtime_error("expected 2 args");
+        }
+        std::string ret = args[0].getString(rt).utf8(rt) + "." +
+                          args[1].getString(rt).utf8(rt);
+        return jsi::String::createFromUtf8(
+            rt, reinterpret_cast<const uint8_t *>(ret.data()), ret.size());
+      });
+
+  dt->global().setProperty(*dt, "cons", dot);
+
+  EXPECT_TRUE(eval("(function() {"
+                   "  try {"
+                   "    cons('fail', 'this'); return true;"
+                   "  } catch (e) {"
+                   "    return false;"
+                   "  }})()")
+                  .getBool());
+
+  EXPECT_TRUE(eval("(function() {"
+                   "  try {"
+                   "    cons('fail'); return false;"
+                   "  } catch (e) {"
+                   "    return ((e instanceof Error) &&"
+                   "            (e.message == 'Exception in HostFunction: ' +"
+                   "                          'expected 2 args'));"
+                   "  }})()")
+                  .getBool());
+}
+
 TEST_F(DuktapeRuntimeTest, HostObjectWithValueMembers) {
   class Bag : public jsi::HostObject {
   public:
