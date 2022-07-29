@@ -1,7 +1,7 @@
 CC=clang
-CFLAGS=-Wall -Werror -Wextra -pedantic -g -std=c17
+CFLAGS=-Wall -Werror -Wextra -pedantic -std=c17 -g -fsanitize=address
 CXX=clang++
-CXXFLAGS=-Wall -Werror -Wextra -pedantic -g -std=c++14
+CXXFLAGS=-Wall -Werror -Wextra -pedantic -std=c++14 -g -fsanitize=address
 CPPFLAGS=-Iinclude -Ilibs -I$(GTEST) -I$(GTEST)/include
 
 BUILD=build
