@@ -176,9 +176,9 @@ TEST_F(DuktapeRuntimeTest, GlobalObject) {
 TEST_F(DuktapeRuntimeTest, HostFunctionWithCaptures) {
   int capture = 4;
   facebook::jsi::HostFunctionType func_with_captures =
-      [&](facebook::jsi::Runtime &rt, const facebook::jsi::Value &thisVal,
-          const facebook::jsi::Value *args,
-          size_t count) { return facebook::jsi::Value(capture); };
+      [&](facebook::jsi::Runtime &, const facebook::jsi::Value &,
+          const facebook::jsi::Value *,
+          size_t) { return facebook::jsi::Value(capture); };
 
   auto v = evaluateHostFunctionFromJS(std::string("func_with_captures"),
                                       std::string("func_with_captures();"), 0,
@@ -189,8 +189,8 @@ TEST_F(DuktapeRuntimeTest, HostFunctionWithCaptures) {
 
 TEST_F(DuktapeRuntimeTest, HostFunctionWithNumberArgs) {
   facebook::jsi::HostFunctionType func_with_num_args =
-      [](facebook::jsi::Runtime &rt, const facebook::jsi::Value &thisVal,
-         const facebook::jsi::Value *args, size_t count) {
+      [](facebook::jsi::Runtime &, const facebook::jsi::Value &,
+         const facebook::jsi::Value *args, size_t) {
         const facebook::jsi::Value &arg1 = args[0];
         const facebook::jsi::Value &arg2 = args[1];
         assert(arg1.isNumber());
@@ -206,7 +206,7 @@ TEST_F(DuktapeRuntimeTest, HostFunctionWithNumberArgs) {
 
 TEST_F(DuktapeRuntimeTest, HostFunctionWithBooleanVarArgs) {
   facebook::jsi::HostFunctionType func_with_bool_varargs =
-      [](facebook::jsi::Runtime &rt, const facebook::jsi::Value &thisVal,
+      [](facebook::jsi::Runtime &, const facebook::jsi::Value &,
          const facebook::jsi::Value *args, size_t count) {
         bool result = false;
         for (unsigned int i = 0; i < count; ++i) {
@@ -246,14 +246,14 @@ TEST_F(DuktapeRuntimeTest, HostFunctionWithBooleanVarArgs) {
 
 TEST_F(DuktapeRuntimeTest, HostFunctionWithHeterogeneousArgs) {
   facebook::jsi::HostFunctionType func_with_heterogeneous_args =
-      [](facebook::jsi::Runtime &rt, const facebook::jsi::Value &thisVal,
-         const facebook::jsi::Value *args, size_t count) {
+      [](facebook::jsi::Runtime &rt, const facebook::jsi::Value &,
+         const facebook::jsi::Value *args, size_t) {
         assert(args[0].isString());
         assert(args[1].isNumber());
         auto str = args[0].getString(rt).utf8(rt);
         unsigned int index = args[1].getNumber();
 
-        if (0 <= index && index < str.length()) {
+        if (index < str.length()) {
           const auto result = std::string(1, str.at(index));
           return facebook::jsi::Value(
               facebook::jsi::String::createFromAscii(rt, result.c_str()));
@@ -363,13 +363,13 @@ TEST_F(DuktapeRuntimeTest, HostObject) {
     bool getPropertyNamesCalled = false;
 
     facebook::jsi::Value get(facebook::jsi::Runtime &,
-                             const facebook::jsi::PropNameID &sym) override {
+                             const facebook::jsi::PropNameID &) override {
       getCalled = true;
       return 9000;
     }
 
-    void set(facebook::jsi::Runtime &rt, const facebook::jsi::PropNameID &prop,
-             const facebook::jsi::Value &val) override {
+    void set(facebook::jsi::Runtime &, const facebook::jsi::PropNameID &,
+             const facebook::jsi::Value &) override {
       setCalled = true;
     }
 

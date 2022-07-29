@@ -23,7 +23,7 @@ public:
   jsi::Value evaluatePreparedJavaScript(
       const std::shared_ptr<const jsi::PreparedJavaScript> &) override;
 
-  bool drainMicrotasks(int maxMicrotasksHint) override {
+  bool drainMicrotasks(int) override {
     throw std::logic_error("drainMicrotasks: unimplemented method");
   }
 
@@ -56,7 +56,7 @@ public:
 
   jsi::PropNameID createPropNameIDFromString(const jsi::String &str) override;
 
-  jsi::PropNameID createPropNameIDFromSymbol(const jsi::Symbol &sym) override {
+  jsi::PropNameID createPropNameIDFromSymbol(const jsi::Symbol &) override {
     throw std::logic_error("createPropNameIDFromSymbol: unimplemented method");
   }
 
