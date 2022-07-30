@@ -1,8 +1,10 @@
+DEBUG_FLAGS=-g -fsanitize=address -DDEBUG
+OPTIMIZE_FLAGS=-Os
 CC=clang
-CFLAGS=-Wall -Werror -Wextra -pedantic -std=c17 -g -fsanitize=address
+CFLAGS=-std=c99
 CXX=clang++
-CXXFLAGS=-Wall -Werror -Wextra -pedantic -std=c++14 -g -fsanitize=address
-CPPFLAGS=-Iinclude -Ilibs -I$(GTEST) -I$(GTEST)/include
+CXXFLAGS=-std=c++14
+CPPFLAGS=-Wall -Werror -Wextra -pedantic -Iinclude -Ilibs -I$(GTEST) -I$(GTEST)/include
 
 BUILD=build
 INCLUDE=include
@@ -15,7 +17,24 @@ DUKTAPE=$(LIBS)/duktape-2.7.0
 GTEST=$(LIBS)/googletest
 JSI=$(LIBS)/jsi
 
+ifeq ($(GCC), 1)
+	CC=gcc
+	CXX=g++
+endif
+
+ifeq ($(DEBUG), 1)
+	CXXFLAGS+=$(DEBUG_FLAGS)
+	CFLAGS+=$(DEBUG_FLAGS)
+endif
+
+ifeq ($(OPT), 1)
+	CFLAGS+=$(OPTIMIZE_FLAGS)
+	CXXFLAGS+=$(OPTIMIZE_FLAGS)
+endif
+
 all: $(BUILD)/test $(BUILD)/jsi-test
+
+$(BUILD)/jsi-test.o: CPPFLAGS+=-Wno-unknown-warning-option -Wno-unused-parameter -Wno-sign-compare -Wno-catch-value
 
 $(BUILD)/jsi-test: $(TEST)/jsi-test.cpp $(BUILD)/jsi-test.o $(BUILD)/gtest-all.o $(BUILD)/duktape-jsi.a
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $(BUILD)/jsi-test -lpthread
@@ -23,9 +42,8 @@ $(BUILD)/jsi-test: $(TEST)/jsi-test.cpp $(BUILD)/jsi-test.o $(BUILD)/gtest-all.o
 $(BUILD)/test: $(TEST)/test.cpp  $(BUILD)/gtest-all.o $(BUILD)/duktape-jsi.a
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $(BUILD)/test -lpthread
 
-# testlib.cpp has some warnings that aren't suppressed by -isystem, so not enabling warnings
 $(BUILD)/jsi-test.o: $(JSI)/test/testlib.h $(JSI)/test/testlib.cpp | $(BUILD)
-	$(CXX) -g -isystem . -isystem $(CPPFLAGS) -c $(JSI)/test/testlib.cpp -o $(BUILD)/jsi-test.o
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c $(JSI)/test/testlib.cpp -o $(BUILD)/jsi-test.o
 
 $(BUILD)/duktape-jsi.a: $(BUILD)/jsi.o $(BUILD)/duktape.o $(BUILD)/duktape-jsi.o
 	$(AR) $(ARFLAGS) $@ $^
@@ -45,5 +63,16 @@ $(BUILD)/gtest-all.o: $(GTEST)/src/* | $(BUILD)
 $(BUILD):
 	mkdir -p $(BUILD)
 
+debug:
+	make clean
+	DEBUG=1 OPT=0 make all
+
+opt:
+	make clean
+	DEBUG=0 OPT=1 make all
+
 clean:
 	rm -rf $(BUILD)
+
+
+
