@@ -731,9 +731,6 @@ void DuktapeRuntime::throwValueOnTopOfStack() {
 
   auto objIndex = duk_normalize_index(ctx, -1);
   if (duk_is_error(ctx, objIndex)) {
-    duk_get_prop_string(ctx, objIndex, "stack");
-    std::string stack(duk_get_string(ctx, -1));
-
     duk_get_prop_string(ctx, objIndex, "message");
     duk_safe_to_string(ctx, -1);
     std::string message(duk_get_string(ctx, -1));
@@ -745,8 +742,15 @@ void DuktapeRuntime::throwValueOnTopOfStack() {
     if (index != std::string::npos) {
       message.replace(index, dukCallStackLimit.size(),
                       "Maximum call stack size exceeded");
+      // naturally, trying to get the backtrace when the maximum
+      // callstack is exceeded causes problems.
+      std::string stack("");
+      throw jsi::JSError(*this, message, stack);
+    } else {
+      duk_get_prop_string(ctx, objIndex, "stack");
+      std::string stack(duk_get_string(ctx, -1));
+      throw jsi::JSError(*this, message, stack);
     }
-    throw jsi::JSError(*this, message, stack);
   } else {
     throw jsi::JSError(*this, duk_safe_to_string(ctx, -1));
   }
