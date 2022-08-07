@@ -71,6 +71,9 @@ opt:
 	make clean
 	DEBUG=0 OPT=1 make all
 
+check: $(BUILD)/test $(BUILD)/jsi-test
+	make debug && ./build/test && ./build/jsi-test
+
 clean:
 	rm -rf $(BUILD)
 
