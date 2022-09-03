@@ -5,6 +5,7 @@
 #include "jsi/jsilib.h"
 #include <map>
 #include <stack>
+#include <stdexcept>
 
 namespace DuktapeJSI {
 
